@@ -1,8 +1,14 @@
+from typing import List
+
+
 class Wave:
+    GAP = '-'
+    BLOCK = '#'
+
     # The size of the gap at the beginning and end of every wave piece
     WAVE_BUFFER = 2
 
-    def __init__(self, wave: str, offset: int):
+    def __init__(self, wave: List[str], offset: int):
         self.wave = wave
         self.offset = offset
 
@@ -11,7 +17,16 @@ class Wave:
     def __repr__(self) -> str:
         start = self.offset
         end = self.offset + len(self.wave) - self.WAVE_BUFFER
-        return self.wave[start:end]
+        return ''.join(self.wave[start:end])
+
+    def __getitem__(self, index: int):
+        return self.wave[index + self.offset]
+
+    def __setitem__(self, index: int, value: str):
+        self.wave[index + self.offset] = value
+
+    def is_empty_at(self, index: int):
+        return self.wave[index] == Wave.GAP
 
     def can_move(self, direction) -> bool:
         # for left/right

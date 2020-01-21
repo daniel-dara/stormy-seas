@@ -1,12 +1,10 @@
-from typing import List, Dict
+from typing import List, Dict, Set
+from src.Direction import Direction
 from src.Wave import Wave
 from src.Boat import Boat
 
 
 class Puzzle:
-    GAP = '-'
-    BLOCK = '#'
-
     # The wave (row) and column that the 0-boat must reach for the puzzle to be solved.
     SOLVE_POSITION = (6, 5)
 
@@ -16,6 +14,7 @@ class Puzzle:
     def __init__(self, puzzle_input: str):
         self.waves: List[Wave] = []
         self.boats: Dict[int, Boat] = {}
+        self.visited_states: Set[str] = set()
 
         self.load(puzzle_input)
 
@@ -33,7 +32,7 @@ class Puzzle:
 
                 if boat_id not in self.boats:
                     # Create the boat if it doesn't exist
-                    self.boats[boat_id] = Boat(row, column, 1)
+                    self.boats[boat_id] = Boat(boat_id, row, column, 1)
                 else:
                     # Otherwise increase the length since we found another segment.
                     self.boats[boat_id].length += 1
@@ -45,9 +44,9 @@ class Puzzle:
             missing_front_gaps = 2 - line.count('#', 0, 2)
             missing_back_gaps = 2 - missing_front_gaps
 
-            full_line = (missing_front_gaps * self.GAP) + line + (missing_back_gaps * self.GAP)
+            full_line = (missing_front_gaps * Wave.GAP) + line + (missing_back_gaps * Wave.GAP)
 
-            self.waves.append(Wave(full_line, offset=missing_front_gaps))
+            self.waves.append(Wave(list(full_line), offset=missing_front_gaps))
 
     def is_solved(self) -> bool:
         return self.boats[self.SOLVE_BOAT_ID].get_position() == self.SOLVE_POSITION
@@ -62,29 +61,28 @@ class Puzzle:
         if self.is_solved():
             return True
 
-        # if puzzle.getState() in visitedStates:
-        # return False
+        if self.get_state() in self.visited_states:
+            return False
 
-        # visitedStates.add(puzzle.getState())
+        print(self.get_state(), '\n')
+        self.visited_states.add(self.get_state())
 
-        # for wave in puzzle.waves:
-        # for direction in [LEFT, RIGHT]:
-        # if wave.canMove(direction):
-        # wave.move(direction)
+        for boat in self.boats.values():
+            for direction in [Direction.UP, Direction.DOWN]:
+                if boat.can_move(direction, self.waves):
+                    boat.move(direction, self.waves)
 
-        # if solve(waves):
-        # return True
+                    if self.is_solvable():
+                        return True
 
-        # wave.move(direction.opposite())
+                    boat.move(direction.opposite(), self.waves)
 
-        # for boat in puzzle.boats:
-        # for direction in [UP, DOWN]:
-        # if boat.canMove(direction):
-        # boat.move(direction)
-
-        # if solve(waves, boats):
-        # return True
-
-        # boat.move(direction.opposite())
+        # for wave in self.waves:
+            # for direction in [LEFT, RIGHT]:
+                # if wave.canMove(direction):
+                    # wave.move(direction)
+                # if solve(waves):
+                    # return True
+                # wave.move(direction.opposite())
 
         return False
