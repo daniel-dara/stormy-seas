@@ -5,8 +5,8 @@ class Wave:
     GAP = '-'
     BLOCK = '#'
 
-    # The size of the gap at the beginning and end of every wave piece
-    WAVE_BUFFER = 2
+    # The size of the gap at the left and right edges of every wave piece
+    GAP_BUFFER = 2
 
     def __init__(self, wave: List[str], offset: int):
         self.wave = wave
@@ -16,7 +16,7 @@ class Wave:
     # front/back gaps
     def __repr__(self) -> str:
         start = self.offset
-        end = self.offset + len(self.wave) - self.WAVE_BUFFER
+        end = self.offset + len(self.wave) - self.GAP_BUFFER
         return ''.join(self.wave[start:end])
 
     def __getitem__(self, index: int):

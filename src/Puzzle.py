@@ -22,11 +22,12 @@ class Puzzle:
         row: int
         line: str
 
+        # Loop over input.
         for row, line in enumerate(puzzle_input.strip().split('\n')):
             column: int
             boat_string_id: str
 
-            # Parse any boats from this wave.
+            # Parse any boats in this wave.
             for column, boat_string_id in filter(lambda x: x[1].isdigit(), enumerate(line)):
                 boat_id = int(boat_string_id)
 
@@ -41,7 +42,7 @@ class Puzzle:
             # such that two gaps are always hidden. Two gaps on the same end may be hidden or it may be one gap from
             # each end. Gaps are omitted from the puzzle input to make it more readable. Now the gaps are added back
             # to accurately track the waves.
-            missing_front_gaps = 2 - line.count('#', 0, 2)
+            missing_front_gaps = line.count('#', 0, 2)
             missing_back_gaps = 2 - missing_front_gaps
 
             full_line = (missing_front_gaps * Wave.GAP) + line + (missing_back_gaps * Wave.GAP)
@@ -86,3 +87,44 @@ class Puzzle:
                 # wave.move(direction.opposite())
 
         return False
+
+    # BoatMove
+    # construct(direction, boat)
+    # is_valid()
+    #   return not (
+    #       boat.is_at_boundary(direction) or
+    #       any(boat.will_hit(direction, boat2) for boat2 in boats) or
+    #       waves[boat.get_row(direction)].is_blocked(boat.get_column)
+    #   )
+    # execute()
+    #   boat.move(direction)
+    # roll_back()
+    #   boat.move(direction.opposite())
+
+    # get_state_hash()
+    #   return str([wave.get_offset()) for wave in waves] + [boat.get_top_left() for boat in boats])
+
+    # to_ascii()
+    # for wave in waves:
+    # board = [list(wave.to_ascii()) for wave in waves]
+    # for boat in boats:
+    #   for row, col in boat.get_all_coordinates():
+    #       board[row][col] = boat.get_id()
+
+
+    # WaveMove
+    # wave
+    # direction
+    # dependentWaves
+    # dependentBoats
+    # is_valid()
+    #   not wave.is_at_boundary(direction)
+    #   repeat
+    #       dependentBoats.add(get_connected_boats())
+    #       dependentWaves.add(get_connected_waves())
+    #   for wave in dependentWave:
+    #
+    #
+    # get_connected_boats()
+    #   for each boat:
+    #       if boat.contains_row(wave.get_row()) and waves.is_blocked_at(boat.get_column() - direction)

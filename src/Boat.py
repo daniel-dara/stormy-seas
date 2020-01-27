@@ -19,21 +19,15 @@ class Boat:
 
     def can_move(self, direction: Direction, waves: List[Wave]) -> bool:
         if direction == Direction.UP:
-            if self.get_top_row() == Board.FIRST_ROW:
-                return False
-
-            if not self.get_wave_above(waves).is_empty_at(self.get_column()):
-                return False
-
-            return True
+            return (
+                self.get_top_row() != Board.FIRST_ROW and
+                self.get_wave_above(waves).is_empty_at(self.get_column())
+            )
         elif direction == Direction.DOWN:
-            if self.get_bottom_row() == Board.LAST_ROW:
-                return False
-
-            if not self.get_wave_below(waves).is_empty_at(self.get_column()):
-                return False
-
-            return True
+            return (
+                self.get_bottom_row() != Board.LAST_ROW and
+                self.get_wave_below(waves).is_empty_at(self.get_column())
+            )
 
     def move(self, direction: Direction, waves: List[Wave]) -> None:
         if direction == Direction.UP:
