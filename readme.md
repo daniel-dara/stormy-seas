@@ -14,3 +14,42 @@ This repo is an attempt at writing an auto-solver for the puzzle by using depth-
 * Add animation for puzzle solution
 * Add GUI for navigating solution
 * GUI for entire puzzle
+
+# Algorithm
+
+The algorithm for solving the puzzle is brute force, which means every possible move is tried until the puzzle is solved.
+
+The difficulty is programming the logic to determine which moves are possible. However rather than writing logic that determines if a move *will be* legal, it ends up being simpler to implement logic that makes the move and then determines if it *was* legal.
+
+This only works due to a few interesting properties of the board state. Think of the board as a matrix or a grid. Each cell in the grid represents an empty space, a blocked wave space, or part of a boat.
+ 
+Statement 1:
+> Given an initial state, any valid move will result in a new state that still has the same total number of empty cells, blocked cells, and boat cells as the first state.
+ 
+ This can be extended any number of moves to deduce that given an initial state, any number of valid moves will still result in a state with cell counts matching the initial state.
+ 
+ Note that the inverse of this is not true.
+ 
+ Statement 2:
+ > Given state A, if the total number of cells (of each type) matches state B, it may or may not be possible to get from A to B with only valid moves.
+
+For example, a set of boats could be deadlocked in state A, such that it is impossible to move. But in state B the same boats could be in a different configuration that allows for them to move. The cell counts would still match but it would be impossible to find valid moves to get from one state to the other.
+ 
+ So how is this useful? So long as moves are executed by the program in a certain way, even invalid moves, the first statement will allow for quick and easy validation of the resulting state.
+ 
+ The rules for moving become:
+ * When a boat moves, it overwrites any cell it moves into with itself and overwrites any cell it moves out of with an empty space.
+ * When a wave moves, if there are no boats in it the move is always legal
+   * If there are any boats, the set of dependent waves must be recursively gathered by finding all the waves touching that boat, and then repeating the process for any other boats that are touching those waves.
+   * The set of dependent waves are then all moved together
+
+```python
+def get_dependent_boats():
+    wave = '---#--0---#1--#-4'
+    direction = 1 # Move waves right
+    boats = []
+
+    for i in range(len(wave)):
+        if wave[i].isdigit() and wave[i - direction] == '#':
+            boats.append(wave[i])
+```
