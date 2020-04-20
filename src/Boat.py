@@ -1,4 +1,5 @@
 from typing import Tuple, List
+
 from src.Board import Board
 from src.Direction import Direction
 from src.Wave import Wave
