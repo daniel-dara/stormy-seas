@@ -9,11 +9,12 @@ class Direction(Enum):
     RIGHT = 'right'
 
     def opposite(self) -> Direction:
-        opposites = {
-            Direction.UP: Direction.DOWN,
-            Direction.DOWN: Direction.UP,
-            Direction.LEFT: Direction.RIGHT,
-            Direction.RIGHT: Direction.LEFT,
-        }
+        return self._OPPOSITES[self]
 
-        return opposites[self]
+
+Direction._OPPOSITES = {
+    Direction.UP: Direction.DOWN,
+    Direction.DOWN: Direction.UP,
+    Direction.LEFT: Direction.RIGHT,
+    Direction.RIGHT: Direction.LEFT,
+}
