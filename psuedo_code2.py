@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import List, Union
+from typing import List
 
 
 class Piece:
@@ -10,7 +10,8 @@ class Piece:
 
 
 class Wave(Piece):
-    pass
+    def __init__(self, id_: int):
+        super().__init__(str(id_))
 
 
 class Boat(Piece):
@@ -18,13 +19,6 @@ class Boat(Piece):
 
 
 class Direction:
-    # class Type(Enum):
-    #     Cardinal = Cardinal
-    #     Rotation = Rotation
-
-    def __init__(self, type_: Union[Cardinal, Rotation]):
-        self.type = type_
-
     def shorthand(self, distance: int) -> str:
         """Returns a short string representation of the current direction and given distance using Solution Notation."""
         pass
@@ -42,8 +36,8 @@ class Cardinal(Direction, Enum):
 
 
 class Rotation(Direction, Enum):
-    CLOCKWISE = 0
-    COUNTER_CLOCKWISE = 1
+    # There is no corresponding CLOCKWISE value because Solution Notation uses only the counter-clockwise direction.
+    COUNTER_CLOCKWISE = 0
 
     def shorthand(self, distance: int) -> str:
         """Returns a short string representation of the current direction and given distance."""
@@ -56,8 +50,11 @@ class Move:
         self.direction = direction
         self.distance = distance
 
-        if direction.type == Rotation and distance not in (90, 180):
-            raise ValueError('Rotational distance must be either 90 or 180 degrees.')
+        if isinstance(piece, Wave) and isinstance(direction, Rotation):
+            raise ValueError('Rotation is not a valid direction for a Wave.')
+
+        if isinstance(direction, Rotation) and distance not in (90, 180):
+            raise ValueError('Rotation distance must be either 90 or 180 degrees.')
 
     def __str__(self) -> str:
         return self.piece.id + self.direction.shorthand(self.distance)
@@ -74,7 +71,13 @@ class Solution:
 
 
 def find_solution() -> Solution:
-    return Solution([Move(Boat('X'), Cardinal.UP, 1)])
+    return Solution([
+        Move(Wave(6), Cardinal.RIGHT, 2),
+        Move(Wave(8), Cardinal.LEFT, 2),
+        Move(Boat('H'), Cardinal.DOWN, 3),
+        Move(Boat('X'), Rotation.COUNTER_CLOCKWISE, 90),
+        Move(Boat('X'), Rotation.COUNTER_CLOCKWISE, 180),
+    ])
 
 
 find_solution().print()
