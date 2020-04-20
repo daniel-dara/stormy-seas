@@ -64,20 +64,10 @@ class Solution:
     def __init__(self, moves: List[Move]):
         self.moves = moves
 
-    def print(self):
-        """Print the solution's moves using Solution Notation."""
-        for move in self.moves:
-            print(str(move))
+    def __str__(self) -> str:
+        """Return a string representation of the solution's moves using Solution Notation."""
+        return ', '.join(str(move) for move in self.moves)
 
 
-def find_solution() -> Solution:
-    return Solution([
-        Move(Wave(6), Cardinal.RIGHT, 2),
-        Move(Wave(8), Cardinal.LEFT, 2),
-        Move(Boat('H'), Cardinal.DOWN, 3),
-        Move(Boat('X'), Rotation.COUNTER_CLOCKWISE, 90),
-        Move(Boat('X'), Rotation.COUNTER_CLOCKWISE, 180),
-    ])
-
-
-find_solution().print()
+def find_solution(moves: List[Move]) -> Solution:
+    return Solution(moves)
