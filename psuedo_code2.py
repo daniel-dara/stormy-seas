@@ -1,16 +1,12 @@
 from __future__ import annotations
 
-from abc import abstractmethod
 from enum import Enum
-from typing import List
+from typing import List, Union
 
 
 class Piece:
     def __init__(self, id_: str):
         self.id = id_
-
-    def id(self) -> str:
-        return self.id
 
 
 class Wave(Piece):
@@ -22,16 +18,16 @@ class Boat(Piece):
 
 
 class Direction:
-    class Type:
-        Cardinal = Cardinal
-        Rotation = Rotation
+    # class Type(Enum):
+    #     Cardinal = Cardinal
+    #     Rotation = Rotation
 
-    def __init__(self, type_: Type):
+    def __init__(self, type_: Union[Cardinal, Rotation]):
         self.type = type_
 
-    @abstractmethod
     def shorthand(self, distance: int) -> str:
         """Returns a short string representation of the current direction and given distance using Solution Notation."""
+        pass
 
 
 class Cardinal(Direction, Enum):
@@ -78,4 +74,7 @@ class Solution:
 
 
 def find_solution() -> Solution:
-    return Solution([])
+    return Solution([Move(Boat('X'), Cardinal.UP, 1)])
+
+
+find_solution().print()
