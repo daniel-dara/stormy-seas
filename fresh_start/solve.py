@@ -1,8 +1,14 @@
-from enum import Enum
+from abc import ABC, abstractmethod, ABCMeta
+from enum import Enum, EnumMeta
 from typing import List
 
 
-class Direction:
+class DirectionMeta(ABCMeta, EnumMeta):
+    pass
+
+
+class Direction(ABC):
+    @abstractmethod
     def shorthand(self, distance: int) -> str:
         """Returns a short string representation of the current direction and given distance using Solution Notation."""
         pass
@@ -12,7 +18,7 @@ class Direction:
         pass
 
 
-class Cardinal(Direction, Enum):
+class Cardinal(Direction, Enum, metaclass=DirectionMeta):
     UP = 'U'
     DOWN = 'D'
     LEFT = 'L'
@@ -23,7 +29,7 @@ class Cardinal(Direction, Enum):
         return self.value + str(distance)
 
 
-class Rotation(Direction, Enum):
+class Rotation(Direction, Enum, metaclass=DirectionMeta):
     # There is no corresponding CLOCKWISE value because Solution Notation uses only the counter-clockwise direction.
     COUNTER_CLOCKWISE = 0
 
