@@ -42,7 +42,7 @@ class Rotation(Direction, Enum, metaclass=DirectionMeta):
             raise ValueError('Rotation distance must be either 90 or 180 degrees.')
 
 
-class Piece:
+class Piece(ABC):
     def __init__(self, id_: str):
         self.id = id_
 
