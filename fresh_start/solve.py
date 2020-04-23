@@ -83,7 +83,3 @@ class Solution:
     def __str__(self) -> str:
         """Return a string representation of the solution's moves using Solution Notation."""
         return ', '.join(str(move) for move in self.moves)
-
-
-def find_solution(moves: List[Move]) -> Solution:
-    return Solution(moves)

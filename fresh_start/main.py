@@ -7,4 +7,4 @@ moves = [
      Move(Boat('X'), Rotation.COUNTER_CLOCKWISE, 90),
 ]
 
-print(find_solution(moves))
+print(Solution(moves))
