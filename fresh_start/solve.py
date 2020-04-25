@@ -1,6 +1,19 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod, ABCMeta
+from copy import deepcopy
 from enum import Enum, EnumMeta
-from typing import List, Dict
+from typing import List, Dict, Tuple, Set
+
+puzzle_input = """
+--#-#-###
+--#-###-#
+--#-##-##
+--#-#-###
+--#-#-###
+--#-#-#-#
+-##0#--#-
+###0#-#--
+"""
 
 
 class Point2D:
@@ -63,10 +76,9 @@ class Boat(Piece):
 
 
 class Wave(Piece):
-    def __init__(self, id_: int, state: str, boats: List[Boat]):
+    def __init__(self, id_: int, state: str):
         super().__init__(str(id_))
         self.state = state  # string of visible gaps, blocks, and boats
-        self.boats = boats
 
     def validate_direction(self, direction: Direction):
         if isinstance(direction, Rotation):
@@ -93,8 +105,84 @@ class Move:
         # move left/right/up/down or rotate
         pass
 
+
+class Solution:
+    def __init__(self, moves: List[Move]):
+        self.moves = moves
+
+    def __str__(self) -> str:
+        """Return a string representation of the solution's moves using Solution Notation."""
+        return ', '.join(str(move) for move in self.moves)
+
+
+class State:
+    """Serializes state information."""
+    def __init__(self, boats: Tuple[Boat], waves: Tuple[Wave]):
+        self.boats = boats
+        self.waves = waves
+
+
+class Puzzle:
+    RED_BOAT_ID = 'X'
+    FINISH_POSITION = (6, 5)
+
+    def __init__(self, initial_state: str):
+        # parse boats (position, orientation, length) or (start x,y end x,y) or (all x,y points)
+        self.boats: Dict[str, Boat] = {}
+
+        # parse waves (configuration, position)
+        self.waves: List[Wave] = []
+
+        self.initial_gap_count = 0
+        self.initial_block_count = 0
+
+    def solve(self) -> Solution:
+        """Run a breadth-first search of all possible states until the goal state is reached."""
+        moves = []
+        queue: List[Move] = []  # TODO prepopulate a move
+        states = Dict[State, Tuple[State, Move]]  # Maps a state to the previous state and move that led to it.
+
+        while not self.is_solved() and queue != []:
+            # TODO implement this
+            # pop the next state
+            # for each possible move
+            #   if new state is not visited and is valid
+            #       push state to queue
+            #       states[new_state] = [prev_state, move]
+
+            # TODO functionalize rest of this for the above
+
+            # check validity of board state
+            #   current gap and block count == initial values
+
+            # generate possible moves
+            #   estimated total = 7 waves * 2 directions + 3 boats * 4 directions == 26 moves
+            #   for each boat
+            #       for each direction (cardinal and rotation)
+            #           generate move
+            #   for each wave
+            #       for each cardinal direction
+            #           generate move
+            pass
+
+        if not self.is_solved():
+            raise Exception('Puzzle has no solution.')
+
+        # try all possible moves until goal is reached
+        # don't repeat states
+
+        # solution is the list of moves that reached the goal
+        return Solution(moves)
+
+    def is_solved(self) -> bool:
+        return self.boats[self.RED_BOAT_ID].position == self.FINISH_POSITION
+
+    def current_state(self) -> Tuple[Tuple[Boat], Tuple[Wave]]:
+        return tuple(self.boats.values()), tuple(self.waves)
+
     # TODO change to Puzzle.is_valid
-    def is_possible(self) -> bool:
+    def was_last_move_valid(self) -> bool:
+        """Compares the current state to the intial state to determine if the last executed move was valid."""
         # Waves - string of empty/full/boat spaces
         # must not hit boundary
         # must not break any boats
@@ -115,73 +203,3 @@ class Move:
         # must not hit boat
         #   if states have equal empty/full space counts then it is possible
         pass
-
-
-class Solution:
-    def __init__(self, moves: List[Move]):
-        self.moves = moves
-
-    def __str__(self) -> str:
-        """Return a string representation of the solution's moves using Solution Notation."""
-        return ', '.join(str(move) for move in self.moves)
-
-
-class Puzzle:
-    RED_BOAT_ID = 'X'
-    FINISH_POSITION = (6, 5)
-
-    def __init__(self, initial_state: str):
-        # parse boats (position, orientation, length) or (start x,y end x,y) or (all x,y points)
-        self.boats: Dict[str, Boat] = {}
-
-        # parse waves (configuration, position)
-        self.waves: List[Wave] = []
-
-        self.initial_gap_count = 0
-        self.initial_block_count = 0
-
-    def solve(self):
-        """Run a breadth-first search of all possible states until the goal state is reached."""
-
-        red_boat = self.boats['X']
-        move_queue: List[Move] = []  # TODO prepopulate a move
-
-        while not self.is_solved() and move_queue != []:
-            # pop a move
-            move = move_queue.pop()
-
-            # execute the move
-            move.execute()
-
-            # check validity of board state
-            #   current gap and block count == initials
-
-            # push new possible moves
-            #   estimated total = 7 waves * 2 directions + 3 boats * 4 directions == 26 moves
-            #   for each boat
-            #       for each direction (cardinal and rotation)
-            #           generate move 1
-            #   for each wave
-            #       for each cardinal direction
-            #           generate move 1
-            move.append([])
-
-            # or
-
-            # pop move
-            # validate move
-            # execute move
-            # push ALL moves
-            pass
-
-        if not self.is_solved():
-            raise Exception('Puzzle has no solution.')
-
-        # try all possible moves until goal is reached
-        # don't repeat states
-
-        # solution is the list of moves that reached the goal
-        pass
-
-    def is_solved(self) -> bool:
-        return self.boats[self.RED_BOAT_ID].position == self.FINISH_POSITION
