@@ -1,4 +1,4 @@
-from fresh_start.solve import *
+from stormyseas.solve import *
 
 moves = [
      Move(Boat('X'), Rotation.COUNTER_CLOCKWISE, 180),
