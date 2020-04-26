@@ -99,6 +99,7 @@ class Wave(Piece):
     def directions(self) -> Tuple[Direction, ...]:
         return Cardinal.LEFT, Cardinal.RIGHT
 
+    # TODO Prevent boat ids from moving if they are not pushed by a block
     def move(self, direction: Direction) -> None:
         if direction == Cardinal.LEFT:
             self._slider = self._slider[1:] + self.EMPTY
@@ -185,6 +186,14 @@ class State:
         return new_state
 
     def _find_interlocked_pieces(self, first_wave: Wave) -> List[Piece]:
+        # get unique boats in wave
+        # for each boat
+        #   get overlapping boats
+        # ^ repeat until no more boats found
+        # get waves that contain any of the boat ids
+
+        # problem: boat can be static while wave moves
+
         # TODO implement (WIP)
         waves = {first_wave}
         boat_ids = set()
@@ -203,12 +212,37 @@ class State:
 
         return []
 
+    def _find_interlocked_pieces2(self, boat: Boat, direction: Direction):
+        for wave in self._waves:
+            if boat.id in wave.locked_boat_ids(direction):
+                pass
+
+    def _find_interlocked_pieces3(self, boat: Boat, direction: Direction):
+        waves = set(wave for wave in self._waves if boat.id in wave.boat_ids())
+
+        # move both waves
+        # find boat ids in waves, move positions with matching row
+        # if all boats straight, return
+        # else
+        # get rows of broken boats
+
+    # TODO this seems more promising
+    def _move_wave(self, wave: Wave, direction: Direction, broken_boats: List[Boat]):
+        # move wave and boat positions FOR THAT WAVE/ROW ONLY
+        # if boats break, also move waves for broken rows (fix the boats)
+        # repeat until no broken boats
+
+        # if final state invalid, wave(s) can't be moved in that direction
+        # optimization: skip attempts to move any more waves that were part of the group in the same direction
+        pass
+
     def _validate(self, new_state: State) -> None:
         new_state.is_valid = not new_state._gap_count() == self._gap_count() and new_state._has_straight_boats()
 
     def _gap_count(self) -> int:
         return sum(wave.count_gaps() for wave in self._waves)
 
+    # TODO reevaluate if this is needed
     def _has_straight_boats(self) -> bool:
         return all(boat.is_straight() for boat in self._boats)
 
