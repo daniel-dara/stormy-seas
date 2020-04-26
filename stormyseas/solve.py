@@ -1,8 +1,9 @@
 from __future__ import annotations
-from abc import ABC, abstractmethod, ABCMeta
+from abc import ABC, abstractmethod
+from collections import deque
 from copy import deepcopy
-from enum import Enum, EnumMeta
-from typing import List, Dict, Tuple, Set, Type, Union
+from enum import Enum
+from typing import List, Dict, Tuple, Union
 
 puzzle_input = """
 --#-#-###
@@ -23,7 +24,6 @@ class Position:
 
 
 class Direction(Enum):
-    test = '1'
     pass
 
 
@@ -44,12 +44,13 @@ class Piece(ABC):
     def __init__(self, id_: Union[str, int]):
         self.id = id_
 
-    def validate_direction(self, direction: Direction):
+    @abstractmethod
+    def directions(self) -> Tuple[Direction, ...]:
+        """Return a list of directions that this piece is allowed to move. (independent of board state)"""
         pass
 
     @abstractmethod
-    def directions(self) -> List[Direction]:
-        """Return a list of directions that this piece is allowed to move. (independent of board state)"""
+    def move(self, direction: Direction):
         pass
 
 
@@ -58,18 +59,53 @@ class Boat(Piece):
         super().__init__(id_)
         self.positions = {position}
 
-    def directions(self) -> List[Direction]:
+    def directions(self) -> Tuple[Direction, ...]:
         # noinspection PyTypeChecker
-        return list(Cardinal) + list(Rotation) if self.id == Puzzle.RED_BOAT_ID else []
+        return tuple(Cardinal) + tuple(Rotation) if self.id == Puzzle.RED_BOAT_ID else ()
+
+    def move(self, direction: Direction):
+        if direction == Rotation.COUNTER_CLOCKWISE:
+            # TODO implement boat rotation
+            pass
+        else:
+            deltas: Dict[Direction] = {
+                Cardinal.LEFT: (0, -1),
+                Cardinal.RIGHT: (0, 1),
+                Cardinal.UP: (1, 0),
+                Cardinal.DOWN: (-1, 0),
+            }
+
+            for position in self.positions:
+                position.row += deltas[direction][0]
+                position.column += deltas[direction][1]
+
+    def is_straight(self) -> bool:
+        some_position = next(iter(self.positions))
+
+        return (
+            all(some_position.row == position.row for position in self.positions) or
+            all(some_position.column == position.column for position in self.positions)
+        )
 
 
 class Wave(Piece):
+    EMPTY = '-'
+    BLOCKED = '#'
+
     def __init__(self, id_: int, state: str):
         super().__init__(id_)
         self.state = state  # string of visible gaps, blocks, and boats
 
-    def directions(self) -> List[Direction]:
-        return [Cardinal.LEFT, Cardinal.RIGHT]
+    def directions(self) -> Tuple[Direction, ...]:
+        return Cardinal.LEFT, Cardinal.RIGHT
+
+    def move(self, direction: Direction) -> None:
+        if direction == Cardinal.LEFT:
+            self.state = self.state[1:] + self.EMPTY
+        elif direction == Cardinal.RIGHT:
+            self.state = self.EMPTY + self.state[:-1]
+        else:
+            raise ValueError('Invalid move direction for Wave: ' + direction.name)
 
 
 class Move:
@@ -79,15 +115,8 @@ class Move:
         self.distance = distance
 
     def __str__(self) -> str:
-        return self.piece.id + self.direction.value
-
-    def execute(self) -> None:
-        # Waves
-        # move left or right
-
-        # Boats
-        # move left/right/up/down or rotate
-        pass
+        # noinspection PyTypeChecker
+        return self.piece.id + self.direction.value + str(self.distance)
 
 
 class Solution:
@@ -100,136 +129,110 @@ class Solution:
 
 
 class State:
-    """Serializes state information."""
+    """Stores state information about the pieces on the board and manages execution of moves."""
+
     def __init__(self, boats: Tuple[Boat], waves: Tuple[Wave], is_valid: bool = True):
         self.boats = boats
         self.waves = waves
         self.is_valid = is_valid
 
+    def is_solved(self) -> bool:
+        """Checks if the red boat has reached the finish."""
+        red_boat = next(boat for boat in self.boats if boat.id == Puzzle.RED_BOAT_ID)
+        return red_boat.positions == Puzzle.FINISH_POSITIONS
+
     def pieces(self) -> Tuple[Piece]:
+        """Returns a list of all the pieces."""
         # noinspection PyTypeChecker
         return self.boats + self.waves
 
-    def execute(self, move: Move) -> State:
-        """Executes the given move and returns the resulting state."""
+    def move(self, piece: Piece, direction: Direction) -> State:
+        """Moves the given piece in the given direction and returns a new state."""
         new_state = deepcopy(self)
 
-        if isinstance(move.piece, Wave):
-            wave = move.piece
-            pieces = self.get_interlocked_pieces(wave)
-            # TODO reconcile move.piece with piece.execute()...
-            [piece.execute(move) for piece in pieces]  # waves are moved and string state changed, boats are only moved
-            # wave.execute(): remove character in direction of move, add gap at opposite end
-        elif isinstance(move.piece, Boat):
-            boat = move.piece
+        if isinstance(piece, Wave):
+            for piece in self._find_interlocked_pieces(piece):
+                piece.move(direction)
+        elif isinstance(piece, Boat):
+            boat = piece
 
             for position in boat.positions:
                 self.waves[position.row].clear(position.column)
 
-            boat.execute(move)
+            boat.move(direction)
 
             for position in boat.positions:
                 self.waves[position.row].fill(position.column, boat.id)
 
-        # new_state.is_valid == (old gaps, (blocks + boats) == new gaps, (blocks + boats))
-        # return new_state
+        self._validate(new_state)
 
+        return new_state
 
-class Puzzle:
-    RED_BOAT_ID = 'X'
-    FINISH_POSITION = (6, 5)
-
-    def __init__(self, initial_state: str):
-        # parse boats (position, orientation, length) or (start x,y end x,y) or (all x,y points)
-        self.boats: Dict[str, Boat] = {}
-
-        # parse waves (configuration, position)
-        self.waves: List[Wave] = []
-
-        self.current_state = None  # Potential alternative to boats/waves members
-
-        self.initial_gap_count = 0
-        self.initial_block_count = 0
-
-    def solve(self) -> Solution:
-        """Run a breadth-first search of all possible states until the goal state is reached."""
-        moves = []
-        queue: List[State] = []  # TODO prepopulate a move
-        states = Dict[State, Tuple[State, Move]]  # Maps a state to the previous state and move that led to it.
-
-        while not self.is_solved() and queue != []:
-            self.current_state = queue.pop()
-
-            for piece in self.current_state.pieces():
-                for direction in piece.directions():
-                    new_state = self.current_state.execute(piece, direction)
-
-                    if new_state not in states and new_state.is_valid:
-                        queue.append(new_state)
-                        states[new_state] = (self.current_state, direction)
-
-            # TODO functionalize rest of this for the above
-
-            # check validity of board state
-            #   current gap and block count == initial values
-
-            # generate possible moves
-            #   estimated total = 7 waves * 2 directions + 3 boats * 4 directions == 26 moves
-            #   for each boat
-            #       for each direction (cardinal and rotation)
-            #           generate move
-            #   for each wave
-            #       for each cardinal direction
-            #           generate move
-            pass
-
-        if not self.is_solved():
-            raise Exception('Puzzle has no solution.')
-
-        # try all possible moves until goal is reached
-        # don't repeat states
-
-        # solution is the list of moves that reached the goal
-        return Solution(moves)
-
-    def is_solved(self) -> bool:
-        return self.boats[self.RED_BOAT_ID].position == self.FINISH_POSITION
-
-    def current_state(self) -> Tuple[Tuple[Boat], Tuple[Wave]]:
-        return tuple(self.boats.values()), tuple(self.waves)
-
-    # TODO change to Puzzle.is_valid
-    def was_last_move_valid(self) -> bool:
-        """Compares the current state to the intial state to determine if the last executed move was valid."""
-        # Waves - string of empty/full/boat spaces
-        # must not hit boundary
-        # must not break any boats
+    def _find_interlocked_pieces(self, piece: Piece) -> List[Piece]:
+        # TODO implement
         #   get boats in wave
         #       get unique boat ids in wave
         #   get waves for boats
         #   get new boats
         #   repeat until no new boats
-        #   can all waves move and not hit boundary
-        #   execute move
-        #       compare states empty/full space counts
-        #       check for broken boats
-
-        # Boat.execute(move)
-        #   row_delta = {up: -1, down: 1}  # rest are 0
-        #   for block in blocks:
-        #       block.row = block.row + row_delta[direction]
-
-        # Boats.is_valid(move)
-        #   all locations in bounds
-        #   no collisions (same gap, block, boat counts)
-
-        #   all locations +-direction in bounds
-        #   no collisions - gap in the space +-direction
-        #       gap_at(row, col) -> ()
-        #       if direction.up -> min(row)
-
-
-        # must not hit wave
-        # must not hit boat
-        #   if states have equal empty/full space counts then it is possible
         pass
+
+    def _validate(self, new_state: State) -> None:
+        new_state.is_valid = not new_state._has_same_counts(self) and new_state._has_straight_boats()
+
+    def _has_same_counts(self, other: State) -> bool:
+        return self._gap_count() == other._gap_count() and self._filled_count() == other._filled_count()
+
+    def _gap_count(self) -> int:
+        return sum(wave.state.count('-') for wave in self.waves)
+
+    def _filled_count(self) -> int:
+        return sum([len(wave.state) - wave.state.count('-') for wave in self.waves])
+
+    def _has_straight_boats(self) -> bool:
+        return all(boat.is_straight() for boat in self.boats)
+
+
+class Puzzle:
+    RED_BOAT_ID = 'X'
+    FINISH_POSITIONS = {(6, 5), (7, 5)}
+
+    def __init__(self):
+        # TODO read input
+        self.initial_state = State(tuple(), tuple())
+        self.current_state = self.initial_state
+
+    def solve(self) -> Solution:
+        """Finds the shortest set of moves to solve the puzzle using a breadth-first search of all possible states."""
+        queue = deque([self.initial_state])
+
+        # Map of each visited state to its previous state and the move that produced it.
+        states: Dict[State, Union[Tuple[State, Direction], None]] = {self.initial_state: None}
+
+        while not self.current_state.is_solved() and len(queue) > 0:
+            self.current_state = queue.pop(0)
+
+            for piece in self.current_state.pieces():
+                for direction in piece.directions():
+                    new_state = self.current_state.move(piece, direction)
+
+                    if new_state not in states and new_state.is_valid:
+                        queue.append(new_state)
+                        states[new_state] = (self.current_state, direction)
+
+        if not self.current_state.is_solved():
+            raise Exception('Puzzle has no solution.')
+
+        return self._generate_solution(states)
+
+    def _generate_solution(self, states: Dict) -> Solution:
+        """Generates the solution (list of moves) while iterating backwards from the final state to the initial state.
+        """
+        moves = []
+
+        while self.current_state != self.initial_state:
+            previous_state, previous_move = states[self.current_state]
+            moves.insert(0, previous_move)
+            self.current_state = previous_move
+
+        return Solution(moves)
