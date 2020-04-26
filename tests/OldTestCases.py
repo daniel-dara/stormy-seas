@@ -2,9 +2,9 @@ from unittest import TestCase
 
 from unittest_data_provider import data_provider
 
-from fresh_start.solve import *
+from stormyseas.solve import *
 
-
+# TODO: Fix old tests and write new ones.
 class TestCases(TestCase):
     @data_provider(lambda: (
         ([Move(Wave(6), Cardinal.RIGHT, 1)], '6R1'),
