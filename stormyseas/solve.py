@@ -53,6 +53,10 @@ class Piece(ABC):
     def move(self, direction: Direction):
         pass
 
+    @abstractmethod  # TODO: Reconcile with move(), probably only need push() with some tweaking.
+    def push(self, direction: Direction) -> Set[Piece]:
+        pass
+
 
 class Boat(Piece):
     def __init__(self, id_: str, position: Position):
@@ -78,6 +82,9 @@ class Boat(Piece):
             for position in self.positions:
                 position.row += deltas[direction][0]
                 position.column += deltas[direction][1]
+
+    def push(self, direction: Direction) -> Set[Piece]:
+        pass
 
     def is_straight(self) -> bool:
         some_position = next(iter(self.positions))
@@ -107,6 +114,33 @@ class Wave(Piece):
             self._slider = self.EMPTY + self._slider[:-1]
         else:
             raise ValueError('Invalid move direction for Wave: ' + direction.name)
+
+    def push(self, direction: Direction) -> Set[str]:
+        self.move(direction)
+
+        slider = self._slider if direction.Cardinal.RIGHT else self._slider[::-1]
+        pushed_ids = set()
+
+        for first, second in zip(slider, slider[1:]):
+            if first == self.BLOCKED and self.is_boat(second):
+                pushed_ids.add(second)
+
+        return pushed_ids
+
+    def pushed_by(self, direction: Direction) -> Set[str]:
+        self.move(direction)
+
+        slider = self._slider if direction.Cardinal.RIGHT else self._slider[::-1]
+        pushed_by_ids = set()
+
+        for first, second in zip(slider, slider[1:]):
+            if second == self.BLOCKED and self.is_boat(first):
+                pushed_by_ids.add(second)
+
+        return pushed_by_ids
+
+    def is_boat(self, character: str):
+        return character != self.BLOCKED and character != self.EMPTY
 
     def clear(self, column: int) -> None:
         if 0 <= column < len(self._slider):
@@ -168,8 +202,8 @@ class State:
         if isinstance(piece, Wave):
             wave: Wave = piece
 
-            for piece in self._find_interlocked_pieces(wave):
-                piece.move(direction)  # --#-- -> ---#-
+            # TODO: Optimize state generation by skipping pieces that are part of a big push.
+            self._push(wave, direction, set())
         elif isinstance(piece, Boat):
             boat: Boat = piece
 
@@ -185,142 +219,38 @@ class State:
 
         return new_state
 
-    def _find_interlocked_pieces(self, first_wave: Wave) -> List[Piece]:
-        # get unique boats in wave
-        # for each boat
-        #   get overlapping boats
-        # ^ repeat until no more boats found
-        # get waves that contain any of the boat ids
-
-        # problem: boat can be static while wave moves
-
-        # TODO implement (WIP)
-        waves = {first_wave}
-        boat_ids = set()
-
-        while True:
-            new_boat_ids = first_wave.boat_ids() - boat_ids
-
-            new_waves = {}
-            for boat_id in new_boat_ids:
-                new_waves = set(wave for wave in self._waves if boat_id in wave.boat_ids())
-
-            truly_new_waves = new_waves - waves
-
-            # ...
-            break
-
-        return []
-
-    def _find_interlocked_pieces2(self, boat: Boat, direction: Direction):
-        for wave in self._waves:
-            if boat.id in wave.locked_boat_ids(direction):
-                pass
-
-    def _find_interlocked_pieces3(self, boat: Boat, direction: Direction):
-        waves = set(wave for wave in self._waves if boat.id in wave.boat_ids())
-
-        # move both waves
-        # find boat ids in waves, move positions with matching row
-        # if all boats straight, return
-        # else
-        # get rows of broken boats
-
-    # TODO this seems more promising
-    def _move_wave(self, wave: Wave, direction: Direction, broken_boats: List[Boat]):
-        # move wave and boat positions FOR THAT WAVE/ROW ONLY
-        # if boats break, also move waves for broken rows (fix the boats)
-        # repeat until no broken boats
-
-        # if final state invalid, wave(s) can't be moved in that direction
-        # optimization: skip attempts to move any more waves that were part of the group in the same direction
+    def _push_boat(self):
         pass
 
-    def _move_boat(self):
-        # move boat right
-
-        # update boat.positions.column + 1
-        #
-        # for each wave containing boat.id:
-        #   if right of boat is blocked:
-        #       move wave right but only push necessary boats
-        #       for each unique pushed boat:
-        #           self._move_boat(pushed_boat)
-        #   else:
-        #       move only boat right
-        #       return []
+    def _push_wave(self):
         pass
-
-    def _push(self, boat: Boat, direction: Direction):
-        move: Set[Piece] = {boat}  # initial boat must move
-        scan: Set[Piece] = {boat}
-
-        while len(scan) > 0:
-            piece = scan.pop()
-
-            # does the piece (wave/boat) push any other pieces (wave -> boat or boat -> wave, boat to boat should be
-            # impossible given no two adjacent empty spaces that aren't at edge of board)?
-            found = self._find_pushed_pieces(piece, direction)
-
-            # remove pieces we've already scanned (they will be in move already)
-            new_pieces = found - move
-
-            # add the new pieces to the scan list (it may contain some of them already)
-            scan = scan.union(new_pieces)
-
-            # add the piece we scanned to the move list
-            move = move.union({piece})
-
-        for piece in move:
-            # move the waves, push only necessary boats, pushed boats returned, move set(pushed_boats)
-            # and update waves if old positions still have boat char
-            pass
-
-    def _get_pushed_waves(self, waves: Set[Wave], boats: Set[Boat], direction: Direction):
-        for wave in waves:
-            new_boats: Set[Boat] = wave.pushed_boats() - boats  # (for the single wave only)
-
-            for new_boat in new_boats:
-                for position in new_boats.positions:
-                    if position.row not in waves:
-                        if self._boat_pushes_wave(position):
-                            new_wave: Wave = wave_at_position_of_row
-                            waves.add(new_wave)
-                            new_boats.add(new_wave.pushed_boats(direction))
-
-    # This seems like a winner?!? Hopefully...
-    def _get_pushed_waves2(self, wave: Wave, waves: Set[Wave], boats: Set[Boat], direction: Direction) -> Set[Wave]:
-        new_boats: Set[Boat] = wave.pushed_boats(direction) - boats  # Pushed boats for the single wave only.
-        boats |= new_boats
-
-        for new_boat in new_boats:
-            new_waves = new_boat.pushed_waves(direction) - waves  # Pushed waves for all waves containing the boat.
-
-            waves |= new_waves
-            for new_wave in new_waves:
-                waves |= self._get_pushed_waves2(new_wave, waves, boats, direction)
-
-        return waves
 
     # Abstracted Piece version with optimized and simpler recurse logic
-    def _get_pushed_pieces2(self, piece: Piece, pushed_pieces: Set[Piece], direction: Direction) -> Set[Piece]:
-        # Pushed boats for the single wave only.
-        # Pushed waves for all waves containing the boat.
-        new_pieces: Set[Piece] = piece.pushed_pieces(direction) - pushed_pieces
+    def _push(self, piece: Piece, direction: Direction, pushed_pieces: Set[Piece]) -> Set[Piece]:
+        # Prevent pushing a piece twice.
+        if piece in pushed_pieces:
+            return set()
 
+        new_pieces: Set[Piece] = set()
+
+        # Push the piece.
+        if isinstance(piece, Boat):
+            for position in piece.positions:
+                if piece.id in self._waves[position.row].pushed_by(direction):
+                    new_pieces |= self._waves[position.row]
+
+            piece.move(direction)
+        else:
+            new_pieces = piece.push(direction) - pushed_pieces
+
+        # Add it to the set since it has been pushed.
+        pushed_pieces |= piece
+
+        # Continue pushing any new pieces.
         for new_piece in new_pieces:
-            # Optimization: Skip this piece if it was already added to the list by a previous new_piece's recursion.
-            if new_piece not in pushed_pieces:
-                pushed_pieces |= self._get_pushed_pieces2(new_piece, pushed_pieces | {new_piece}, direction)
+            pushed_pieces |= self._push(new_piece, direction, pushed_pieces)
 
         return pushed_pieces
-
-    def _find_pushed_pieces(self, piece: Piece, direction: Direction) -> Set[Piece]:
-        # if Wave
-        #   return pushed boat ids (scan _slider)
-        # if Boat
-        #   scan waves return waves/boats in any space immediately in the way
-        return set()
 
     def _validate(self, new_state: State) -> None:
         new_state.is_valid = not new_state._gap_count() == self._gap_count() and new_state._has_straight_boats()
