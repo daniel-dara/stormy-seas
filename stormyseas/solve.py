@@ -169,13 +169,17 @@ class State:
             wave.move(direction)
         elif isinstance(piece, Boat):
             boat: Boat = piece
-            self._push_piece(boat, direction, set())
+
+            if direction in (Cardinal.UP, Cardinal.DOWN):
+                boat.move(direction)
+            else:
+                self._push_piece(boat, direction, set())
 
         return self
 
     def _push_piece(self, piece: Piece, direction: Direction, pushed_pieces: Set[Piece]) -> Set[Piece]:
         piece.move(direction)
-        pushed_pieces |= piece
+        pushed_pieces.add(piece)
 
         if isinstance(piece, Wave):
             for boat in self._boats:
@@ -185,7 +189,7 @@ class State:
             for position in piece.positions():
                 wave = self._waves[position.row]
 
-                if wave.collides(piece.positions()):
+                if wave.collides(piece):
                     pushed_pieces |= self._push_piece(wave, direction, pushed_pieces)
         else:
             raise ValueError('Impossible piece, not a wave or boat')
