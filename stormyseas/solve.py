@@ -72,7 +72,7 @@ class Piece(ABC):
         pass
 
     @abstractmethod
-    def move(self, direction: Direction):
+    def move(self, direction: Direction) -> None:
         pass
 
     @abstractmethod
@@ -88,6 +88,12 @@ class Piece(ABC):
     def __repr__(self) -> str:
         return str(self)
 
+    def __eq__(self, other) -> bool:
+        return self.id == other.id
+
+    def __hash__(self) -> int:
+        return hash(self.id)
+
 
 class Boat(Piece):
     def __init__(self, id_: str, positions: Set[Position]):
@@ -98,7 +104,7 @@ class Boat(Piece):
         # noinspection PyTypeChecker
         return tuple(Cardinal) + tuple(Rotation) if self.id == Puzzle.RED_BOAT_ID else ()
 
-    def move(self, direction: Direction):
+    def move(self, direction: Direction) -> None:
         if direction == Rotation.COUNTER_CLOCKWISE:
             # TODO implement boat rotation
             pass
@@ -128,7 +134,6 @@ class Wave(Piece):
     def directions(self) -> Tuple[Direction, ...]:
         return Cardinal.LEFT, Cardinal.RIGHT
 
-    # TODO Prevent boat ids from moving if they are not pushed by a block
     def move(self, direction: Direction) -> None:
         if direction not in self.directions():
             raise ValueError('Invalid move direction for Wave: ' + direction.name)
@@ -189,14 +194,15 @@ class State:
         """Moves the given piece in the given direction and returns a new state."""
         new_state = deepcopy(self)
         new_piece = new_state.find_piece(piece.id)
-        return new_state._move(new_piece, direction)
+        new_state._move(new_piece, direction)
+        return new_state
 
-    def _move(self, piece: Piece, direction: Direction) -> State:
+    def _move(self, piece: Piece, direction: Direction) -> None:
         """Same as move() but modifies the current state instance."""
-        # TODO: Optimize state generation by skipping pieces that are part of a big push.
+        # TODO: Optimize state generation by caching pushes.
         if isinstance(piece, Wave):
             wave: Wave = piece
-            wave.move(direction)
+            self._push_piece(wave, direction, set())
         elif isinstance(piece, Boat):
             boat: Boat = piece
 
@@ -204,8 +210,6 @@ class State:
                 boat.move(direction)
             else:
                 self._push_piece(boat, direction, set())
-
-        return self
 
     def _push_piece(self, piece: Piece, direction: Direction, pushed_pieces: Set[Piece]) -> Set[Piece]:
         piece.move(direction)
@@ -275,7 +279,7 @@ class State:
             if id_ == boat.id:
                 return boat
 
-        raise ValueError('Unable to find Piece with id: ' + id_)
+        raise ValueError('Unable to find Piece with id: ' + str(id_))
 
 
 class Puzzle:
@@ -304,6 +308,7 @@ class Puzzle:
 
     def solve(self) -> Solution:
         start = time.time()
+        step_start = time.time()
 
         """Finds the shortest set of moves to solve the puzzle using a breadth-first search of all possible states."""
         queue = deque([(self._initial_state, 0)])
@@ -311,6 +316,7 @@ class Puzzle:
         # Map of each visited state to its previous state and the move that produced it.
         states: Dict[str, Union[Tuple[State, Move, int], None]] = {str(self._initial_state): None}
 
+        prev_steps = 0
         prev_states_length = len(states)
         prev_queue_length = len(queue)
 
@@ -325,18 +331,28 @@ class Puzzle:
                         queue.append((new_state, steps + 1))
                         states[str(new_state)] = (self._current_state, Move(piece, direction), steps + 1)
 
-            print(steps, len(states), len(states) - prev_states_length, len(queue), len(queue) - prev_queue_length)
+            if steps != prev_steps:
+                print(steps, len(states), len(states) - prev_states_length, len(queue), len(queue) - prev_queue_length)
+                seconds = time.time() - step_start
+                print('Time Elapsed: ' + str(int(seconds // 60)) + 'm ' + str(int(seconds % 60)) + 's')
+                step_start = time.time()
+
+                if steps == 10:
+                    break
+
+            prev_steps = steps
             prev_states_length = len(states)
             prev_queue_length = len(queue)
 
         seconds = time.time() - start
         print('Completed!')
+        # print('Total Solutions: ' + str(total_solutions))
         print('Time Elapsed: ' + str(int(seconds // 60)) + 'm ' + str(int(seconds % 60)) + 's')
         print('Scanned ' + "{:,}".format(len(states)) + ' states with ' +
               "{:,}".format(len(queue)) + ' left in the queue.')
 
-        if not self._current_state.is_solved():
-            raise Exception('Puzzle has no solution.')
+        # if not self._current_state.is_solved():
+        #     raise Exception('Puzzle has no solution.')
 
         return self._generate_solution(states)
 
