@@ -159,7 +159,7 @@ class State:
 
     def move(self, piece: Piece, direction: Direction) -> State:
         """Moves the given piece in the given direction and returns a new state."""
-        return deepcopy(self).move(piece, direction)
+        return deepcopy(self)._move(piece, direction)
 
     def _move(self, piece: Piece, direction: Direction) -> State:
         """Same as move() but modifies the current state instance."""
