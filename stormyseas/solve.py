@@ -11,10 +11,16 @@ class Position:
         self.row = row
         self.column = column
 
-    def __eq__(self, other):
+    def __str__(self) -> str:
+        return '(' + str(self.row) + ', ' + str(self.column) + ')'
+
+    def __repr__(self) -> str:
+        return self.__str__()
+
+    def __eq__(self, other) -> bool:
         return self.row == other.row and self.column == other.column
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.row, self.column))
 
 
@@ -74,6 +80,12 @@ class Piece(ABC):
     def collides(self, piece: Piece) -> bool:
         return len(self.positions().intersection(piece.positions())) > 0
 
+    def __str__(self) -> str:
+        return '{' + str(self.id) + ': ' + ', '.join(str(position) for position in self.positions()) + '}'
+
+    def __repr__(self) -> str:
+        return str(self)
+
 
 class Boat(Piece):
     def __init__(self, id_: str, positions: Set[Position]):
@@ -89,9 +101,10 @@ class Boat(Piece):
             # TODO implement boat rotation
             pass
         else:
-            for position in self._positions:
-                position.row += direction.row_delta()
-                position.column += direction.column_delta()
+            self._positions = set(
+                Position(position.row + direction.row_delta(), position.column + direction.column_delta())
+                for position in self._positions
+            )
 
     def is_straight(self) -> bool:
         some_position = next(iter(self._positions))
@@ -118,9 +131,10 @@ class Wave(Piece):
         if direction not in self.directions():
             raise ValueError('Invalid move direction for Wave: ' + direction.name)
 
-        for position in self._bumps:
-            position.row += direction.row_delta()
-            position.column += direction.column_delta()
+        self._bumps = set(
+            Position(position.row + direction.row_delta(), position.column + direction.column_delta())
+            for position in self._bumps
+        )
 
     def positions(self) -> Set[Position]:
         return self._bumps
@@ -135,6 +149,9 @@ class Move:
     def __str__(self) -> str:
         # noinspection PyTypeChecker
         return self._piece.id + self._direction.value + str(self._distance)
+
+    def __repr__(self) -> str:
+        return self.__str__()
 
 
 class Solution:
@@ -242,10 +259,7 @@ class State:
             for position in boat.positions():
                 board[position.row][position.column] = boat.id
 
-        for row in board:
-            row.append('\n')
-
-        return ''.join([char for row in board for char in row])
+        return '\n'.join(''.join(row) for row in board)
 
     def find_piece(self, id_: Union[str, int]) -> Piece:
         for wave in self._waves:
@@ -261,7 +275,7 @@ class State:
 
 class Puzzle:
     RED_BOAT_ID = 'X'
-    FINISH_POSITIONS = {(6, 5), (7, 5)}
+    FINISH_POSITIONS = {Position(6, 5), Position(7, 5)}
 
     def __init__(self, input_: str):
         boat_positions: Dict[str, Set[Position]] = defaultdict(lambda: set())
@@ -300,7 +314,6 @@ class Puzzle:
                     if new_state.is_valid() and str(new_state) not in states:
                         queue.append(new_state)
                         states[str(new_state)] = (self._current_state, direction)
-                        x = 1
 
             print(len(states), len(queue))
 
