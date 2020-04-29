@@ -1,20 +1,9 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from collections import deque
+from collections import deque, defaultdict
 from copy import deepcopy
 from enum import Enum
 from typing import List, Dict, Tuple, Union, Set
-
-puzzle_input = """
---#-#-###
---#-###-#
---#-##-##
---#-#-###
---#-#-###
---#-#-#-#
--##0#--#-
-###0#-#--
-"""
 
 
 class Position:
@@ -24,7 +13,11 @@ class Position:
 
 
 class Direction(Enum):
-    pass
+    def row_delta(self) -> int:
+        pass
+
+    def column_delta(self) -> int:
+        pass
 
 
 class Cardinal(Direction):
@@ -32,6 +25,21 @@ class Cardinal(Direction):
     DOWN = 'D'
     LEFT = 'L'
     RIGHT = 'R'
+
+    def row_delta(self) -> int:
+        return self._deltas()[self].row
+
+    def column_delta(self) -> int:
+        return self._deltas()[self].column
+
+    @staticmethod
+    def _deltas() -> Dict[Direction, Position]:
+        return {
+            Cardinal.LEFT: Position(0, -1),
+            Cardinal.RIGHT: Position(0, 1),
+            Cardinal.UP: Position(1, 0),
+            Cardinal.DOWN: Position(-1, 0),
+        }
 
 
 class Rotation(Direction):
@@ -53,15 +61,18 @@ class Piece(ABC):
     def move(self, direction: Direction):
         pass
 
-    @abstractmethod  # TODO: Reconcile with move(), probably only need push() with some tweaking.
-    def push(self, direction: Direction) -> Set[Piece]:
+    @abstractmethod
+    def positions(self) -> Set[Position]:
         pass
+
+    def collides(self, piece: Piece) -> bool:
+        return len(self.positions().intersection(piece.positions())) > 0
 
 
 class Boat(Piece):
-    def __init__(self, id_: str, position: Position):
+    def __init__(self, id_: str, positions: Set[Position]):
         super().__init__(id_)
-        self.positions = {position}
+        self._positions = positions
 
     def directions(self) -> Tuple[Direction, ...]:
         # noinspection PyTypeChecker
@@ -72,89 +83,41 @@ class Boat(Piece):
             # TODO implement boat rotation
             pass
         else:
-            deltas: Dict[Direction] = {
-                Cardinal.LEFT: (0, -1),
-                Cardinal.RIGHT: (0, 1),
-                Cardinal.UP: (1, 0),
-                Cardinal.DOWN: (-1, 0),
-            }
-
-            for position in self.positions:
-                position.row += deltas[direction][0]
-                position.column += deltas[direction][1]
-
-    def push(self, direction: Direction) -> Set[Piece]:
-        pass
+            for position in self._positions:
+                position.row += direction.row_delta()
+                position.column += direction.column_delta()
 
     def is_straight(self) -> bool:
-        some_position = next(iter(self.positions))
+        some_position = next(iter(self._positions))
 
         return (
-            all(some_position.row == position.row for position in self.positions) or
-            all(some_position.column == position.column for position in self.positions)
+                all(some_position.row == position.row for position in self._positions) or
+                all(some_position.column == position.column for position in self._positions)
         )
+
+    def positions(self) -> Set[Position]:
+        return self._positions
 
 
 class Wave(Piece):
-    EMPTY = '-'
-    BLOCKED = '#'
-
-    def __init__(self, id_: int, slider: List[str]):
+    def __init__(self, id_: int, bumps: Set[Position]):
         super().__init__(id_)
-        self._slider = slider
+        self._bumps = bumps
 
     def directions(self) -> Tuple[Direction, ...]:
         return Cardinal.LEFT, Cardinal.RIGHT
 
     # TODO Prevent boat ids from moving if they are not pushed by a block
     def move(self, direction: Direction) -> None:
-        if direction == Cardinal.LEFT:
-            self._slider = self._slider[1:] + self.EMPTY
-        elif direction == Cardinal.RIGHT:
-            self._slider = self.EMPTY + self._slider[:-1]
-        else:
+        if direction not in self.directions():
             raise ValueError('Invalid move direction for Wave: ' + direction.name)
 
-    def push(self, direction: Direction) -> Set[str]:
-        self.move(direction)
+        for position in self._bumps:
+            position.row += direction.row_delta()
+            position.column += direction.column_delta()
 
-        slider = self._slider if direction.Cardinal.RIGHT else self._slider[::-1]
-        pushed_ids = set()
-
-        for first, second in zip(slider, slider[1:]):
-            if first == self.BLOCKED and self.is_boat(second):
-                pushed_ids.add(second)
-
-        return pushed_ids
-
-    def pushed_by(self, direction: Direction) -> Set[str]:
-        self.move(direction)
-
-        slider = self._slider if direction.Cardinal.RIGHT else self._slider[::-1]
-        pushed_by_ids = set()
-
-        for first, second in zip(slider, slider[1:]):
-            if second == self.BLOCKED and self.is_boat(first):
-                pushed_by_ids.add(second)
-
-        return pushed_by_ids
-
-    def is_boat(self, character: str):
-        return character != self.BLOCKED and character != self.EMPTY
-
-    def clear(self, column: int) -> None:
-        if 0 <= column < len(self._slider):
-            self._slider[column] = self.EMPTY
-
-    def fill(self, column: int) -> None:
-        if 0 <= column < len(self._slider):
-            self._slider[column] = self.BLOCKED
-
-    def count_gaps(self) -> int:
-        return self._slider.count(self.EMPTY)
-
-    def boat_ids(self) -> Set[str]:
-        return set(filter(lambda char: char != self.EMPTY and char != self.BLOCKED, self._slider))
+    def positions(self) -> Set[Position]:
+        return self._bumps
 
 
 class Move:
@@ -180,15 +143,14 @@ class Solution:
 class State:
     """Stores state information about the pieces on the board and manages execution of moves."""
 
-    def __init__(self, boats: Tuple[Boat], waves: Tuple[Wave], is_valid: bool = True):
+    def __init__(self, boats: Tuple[Boat], waves: Tuple[Wave]):
         self._boats = boats
         self._waves = waves
-        self.is_valid = is_valid
 
     def is_solved(self) -> bool:
         """Checks if the red boat has reached the finish."""
         red_boat = next(boat for boat in self._boats if boat.id == Puzzle.RED_BOAT_ID)
-        return red_boat.positions == Puzzle.FINISH_POSITIONS
+        return red_boat.positions() == Puzzle.FINISH_POSITIONS
 
     def pieces(self) -> Tuple[Piece]:
         """Returns a list of all the pieces."""
@@ -197,79 +159,95 @@ class State:
 
     def move(self, piece: Piece, direction: Direction) -> State:
         """Moves the given piece in the given direction and returns a new state."""
-        new_state = deepcopy(self)
+        return deepcopy(self).move(piece, direction)
 
+    def _move(self, piece: Piece, direction: Direction) -> State:
+        """Same as move() but modifies the current state instance."""
+        # TODO: Optimize state generation by skipping pieces that are part of a big push.
         if isinstance(piece, Wave):
             wave: Wave = piece
-
-            # TODO: Optimize state generation by skipping pieces that are part of a big push.
-            self._push(wave, direction, set())
+            wave.move(direction)
         elif isinstance(piece, Boat):
             boat: Boat = piece
+            self._push_piece(boat, direction, set())
 
-            for position in boat.positions:
-                self._waves[position.row].clear(position.column)
+        return self
 
-            boat.move(direction)
-
-            for position in boat.positions:
-                self._waves[position.row].fill(position.column, boat.id)
-
-        self._validate(new_state)
-
-        return new_state
-
-    def _push_boat(self):
-        pass
-
-    def _push_wave(self):
-        pass
-
-    # Abstracted Piece version with optimized and simpler recurse logic
-    def _push(self, piece: Piece, direction: Direction, pushed_pieces: Set[Piece]) -> Set[Piece]:
-        # Prevent pushing a piece twice.
-        if piece in pushed_pieces:
-            return set()
-
-        new_pieces: Set[Piece] = set()
-
-        # Push the piece.
-        if isinstance(piece, Boat):
-            for position in piece.positions:
-                if piece.id in self._waves[position.row].pushed_by(direction):
-                    new_pieces |= self._waves[position.row]
-
-            piece.move(direction)
-        else:
-            new_pieces = piece.push(direction) - pushed_pieces
-
-        # Add it to the set since it has been pushed.
+    def _push_piece(self, piece: Piece, direction: Direction, pushed_pieces: Set[Piece]) -> Set[Piece]:
+        piece.move(direction)
         pushed_pieces |= piece
 
-        # Continue pushing any new pieces.
-        for new_piece in new_pieces:
-            pushed_pieces |= self._push(new_piece, direction, pushed_pieces)
+        if isinstance(piece, Wave):
+            for boat in self._boats:
+                if piece.collides(boat):
+                    pushed_pieces |= self._push_piece(boat, direction, pushed_pieces)
+        elif isinstance(piece, Boat):
+            for position in piece.positions():
+                wave = self._waves[position.row]
+
+                if wave.collides(piece.positions()):
+                    pushed_pieces |= self._push_piece(wave, direction, pushed_pieces)
+        else:
+            raise ValueError('Impossible piece, not a wave or boat')
 
         return pushed_pieces
 
-    def _validate(self, new_state: State) -> None:
-        new_state.is_valid = not new_state._gap_count() == self._gap_count() and new_state._has_straight_boats()
+    def is_valid(self) -> bool:
+        return not self._has_collision() and self._has_straight_boats()
 
-    def _gap_count(self) -> int:
-        return sum(wave.count_gaps() for wave in self._waves)
+    def _has_collision(self) -> bool:
+        all_positions = self._all_boat_positions() + self._all_wave_positions()
+        return len(all_positions) != len(set(all_positions))
+
+    def _all_boat_positions(self) -> List[Position]:
+        return [position for boat in self._boats for position in boat.positions()]
+
+    def _all_wave_positions(self) -> List[Position]:
+        return [position for wave in self._waves for position in wave.positions()]
 
     # TODO reevaluate if this is needed
     def _has_straight_boats(self) -> bool:
         return all(boat.is_straight() for boat in self._boats)
+
+    def __str__(self) -> str:
+        board = [['-'] * 9 for _ in range(8)]
+
+        for wave in self._waves:
+            for position in wave.positions():
+                board[position.row][position.column] = '#'
+
+        for boat in self._boats:
+            for position in boat.positions():
+                board[position.row][position.column] = boat.id
+
+        for row in board:
+            row.append('\n')
+
+        return ''.join([char for row in board for char in row])
 
 
 class Puzzle:
     RED_BOAT_ID = 'X'
     FINISH_POSITIONS = {(6, 5), (7, 5)}
 
-    def __init__(self):
-        # TODO read input
-        self._initial_state = State(tuple(), tuple())
+    def __init__(self, input_: str):
+        boat_positions: Dict[str, Set[Position]] = defaultdict(lambda: set())
+        waves = []
+
+        for row, line in enumerate(input_.strip().split('\n')):
+            wave_positions = set()
+
+            for column, character in enumerate(line.strip()):
+                if character == '#':
+                    wave_positions.add(Position(row, column))
+                elif character != '-':
+                    boat_positions[character].add(Position(row, column))
+
+            waves.append(Wave(row, wave_positions))
+
+        boats = [Boat(id_, positions) for id_, positions in boat_positions.items()]
+
+        self._initial_state = State(tuple(boats), tuple(waves))
         self._current_state = self._initial_state
 
     def solve(self) -> Solution:
@@ -280,13 +258,13 @@ class Puzzle:
         states: Dict[State, Union[Tuple[State, Direction], None]] = {self._initial_state: None}
 
         while not self._current_state.is_solved() and len(queue) > 0:
-            self._current_state = queue.pop(0)
+            self._current_state = queue.pop()
 
             for piece in self._current_state.pieces():
                 for direction in piece.directions():
                     new_state = self._current_state.move(piece, direction)
 
-                    if new_state not in states and new_state.is_valid:
+                    if new_state not in states and new_state.is_valid():
                         queue.append(new_state)
                         states[new_state] = (self._current_state, direction)
 
