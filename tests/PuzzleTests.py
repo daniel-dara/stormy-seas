@@ -156,3 +156,9 @@ class PuzzleTests(TestCase):
             self.assertTrue(state.is_valid())
 
         self.assertTrue(state.is_solved())
+
+    def test_solve_from_step_12(self):
+        with open('input/problem_1_step_13.txt') as input_:
+            puzzle = Puzzle(input_.read())
+            solution = puzzle.solve()
+            self.assertEqual(4, solution.length())
