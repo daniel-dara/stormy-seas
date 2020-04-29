@@ -306,26 +306,26 @@ class Puzzle:
         start = time.time()
 
         """Finds the shortest set of moves to solve the puzzle using a breadth-first search of all possible states."""
-        queue = deque([self._initial_state])
+        queue = deque([(self._initial_state, 0)])
 
         # Map of each visited state to its previous state and the move that produced it.
-        states: Dict[str, Union[Tuple[State, Move], None]] = {str(self._initial_state): None}
+        states: Dict[str, Union[Tuple[State, Move, int], None]] = {str(self._initial_state): None}
 
         prev_states_length = len(states)
         prev_queue_length = len(queue)
 
         while not self._current_state.is_solved() and len(queue) > 0:
-            self._current_state = queue.pop()
+            self._current_state, steps = queue.popleft()
 
             for piece in self._current_state.pieces():
                 for direction in piece.directions():
                     new_state = self._current_state.move(piece, direction)
 
                     if new_state.is_valid() and str(new_state) not in states:
-                        queue.append(new_state)
-                        states[str(new_state)] = (self._current_state, Move(piece, direction))
+                        queue.append((new_state, steps + 1))
+                        states[str(new_state)] = (self._current_state, Move(piece, direction), steps + 1)
 
-            print(len(states), len(states) - prev_states_length, len(queue), len(queue) - prev_queue_length)
+            print(steps, len(states), len(states) - prev_states_length, len(queue), len(queue) - prev_queue_length)
             prev_states_length = len(states)
             prev_queue_length = len(queue)
 
@@ -346,7 +346,7 @@ class Puzzle:
         moves: List[Move] = []
 
         while str(self._current_state) != str(self._initial_state):
-            previous_state, previous_move = states[str(self._current_state)]
+            previous_state, previous_move, steps = states[str(self._current_state)]
             moves.insert(0, previous_move)
             self._current_state = previous_state
 
