@@ -51,8 +51,8 @@ class Cardinal(Direction):
         return {
             Cardinal.LEFT: Position(0, -1),
             Cardinal.RIGHT: Position(0, 1),
-            Cardinal.UP: Position(1, 0),
-            Cardinal.DOWN: Position(-1, 0),
+            Cardinal.UP: Position(-1, 0),
+            Cardinal.DOWN: Position(1, 0),
         }
 
 
