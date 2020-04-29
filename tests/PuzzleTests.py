@@ -5,7 +5,6 @@ from unittest_data_provider import data_provider
 from stormyseas.solve import *
 
 
-# TODO: Fix old tests and write new ones.
 class PuzzleTests(TestCase):
     @data_provider(lambda: (
         ("""
@@ -67,7 +66,7 @@ class PuzzleTests(TestCase):
 --#-#-###
 --#-###-#
 --#-##-##
---#-#-###
+--#B-####
 --#B#-##-
 --#B#A#--
 -##X#A-#-
@@ -76,7 +75,7 @@ class PuzzleTests(TestCase):
 --#-#-###
 --#-###-#
 --#-##-##
---#-#-###
+--#-B####
 ---#B#-##
 ---#B#A#-
 --##X#A-#

@@ -12,3 +12,6 @@ input_ = """
 """
 
 solution = Puzzle(input_).solve()
+
+print('Solution has ' + str(solution.length()) + ' moves.')
+print(solution)

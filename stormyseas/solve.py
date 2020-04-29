@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+import time
 from abc import ABC, abstractmethod
 from collections import deque, defaultdict
 from copy import deepcopy
@@ -141,14 +143,14 @@ class Wave(Piece):
 
 
 class Move:
-    def __init__(self, piece: Piece, direction: Direction, distance: int):
+    def __init__(self, piece: Piece, direction: Direction, distance: int = 1):
         self._piece = piece
         self._direction = direction
         self._distance = distance
 
     def __str__(self) -> str:
         # noinspection PyTypeChecker
-        return self._piece.id + self._direction.value + str(self._distance)
+        return str(self._piece.id) + self._direction.value + str(self._distance)
 
     def __repr__(self) -> str:
         return self.__str__()
@@ -161,6 +163,9 @@ class Solution:
     def __str__(self) -> str:
         """Return a string representation of the solution's moves using Solution Notation."""
         return ', '.join(str(move) for move in self._moves)
+
+    def length(self) -> int:
+        return len(self._moves)
 
 
 class State:
@@ -298,11 +303,16 @@ class Puzzle:
         self._current_state = self._initial_state
 
     def solve(self) -> Solution:
+        start = time.time()
+
         """Finds the shortest set of moves to solve the puzzle using a breadth-first search of all possible states."""
         queue = deque([self._initial_state])
 
         # Map of each visited state to its previous state and the move that produced it.
-        states: Dict[str, Union[Tuple[State, Direction], None]] = {str(self._initial_state): None}
+        states: Dict[str, Union[Tuple[State, Move], None]] = {str(self._initial_state): None}
+
+        prev_states_length = len(states)
+        prev_queue_length = len(queue)
 
         while not self._current_state.is_solved() and len(queue) > 0:
             self._current_state = queue.pop()
@@ -313,9 +323,17 @@ class Puzzle:
 
                     if new_state.is_valid() and str(new_state) not in states:
                         queue.append(new_state)
-                        states[str(new_state)] = (self._current_state, direction)
+                        states[str(new_state)] = (self._current_state, Move(piece, direction))
 
-            print(len(states), len(queue))
+            print(len(states), len(states) - prev_states_length, len(queue), len(queue) - prev_queue_length)
+            prev_states_length = len(states)
+            prev_queue_length = len(queue)
+
+        seconds = time.time() - start
+        print('Completed!')
+        print('Time Elapsed: ' + str(int(seconds // 60)) + 'm ' + str(int(seconds % 60)) + 's')
+        print('Scanned ' + "{:,}".format(len(states)) + ' states with ' +
+              "{:,}".format(len(queue)) + ' left in the queue.')
 
         if not self._current_state.is_solved():
             raise Exception('Puzzle has no solution.')
@@ -325,11 +343,11 @@ class Puzzle:
     def _generate_solution(self, states: Dict) -> Solution:
         """Generates the solution (list of moves) while iterating backwards from the final state to the initial state.
         """
-        moves = []
+        moves: List[Move] = []
 
-        while self._current_state != self._initial_state:
-            previous_state, previous_move = states[self._current_state]
+        while str(self._current_state) != str(self._initial_state):
+            previous_state, previous_move = states[str(self._current_state)]
             moves.insert(0, previous_move)
-            self._current_state = previous_move
+            self._current_state = previous_state
 
         return Solution(moves)
