@@ -11,6 +11,12 @@ class Position:
         self.row = row
         self.column = column
 
+    def __eq__(self, other):
+        return self.row == other.row and self.column == other.column
+
+    def __hash__(self):
+        return hash((self.row, self.column))
+
 
 class Direction(Enum):
     def row_delta(self) -> int:
@@ -159,7 +165,9 @@ class State:
 
     def move(self, piece: Piece, direction: Direction) -> State:
         """Moves the given piece in the given direction and returns a new state."""
-        return deepcopy(self)._move(piece, direction)
+        new_state = deepcopy(self)
+        new_piece = new_state.find_piece(piece.id)
+        return new_state._move(new_piece, direction)
 
     def _move(self, piece: Piece, direction: Direction) -> State:
         """Same as move() but modifies the current state instance."""
@@ -197,10 +205,10 @@ class State:
         return pushed_pieces
 
     def is_valid(self) -> bool:
-        return not self._has_collision() and self._has_straight_boats()
+        return not self._has_collision() and self._has_straight_boats() and not self._out_of_bounds()
 
     def _has_collision(self) -> bool:
-        all_positions = self._all_boat_positions() + self._all_wave_positions()
+        all_positions = self._all_positions()
         return len(all_positions) != len(set(all_positions))
 
     def _all_boat_positions(self) -> List[Position]:
@@ -209,9 +217,19 @@ class State:
     def _all_wave_positions(self) -> List[Position]:
         return [position for wave in self._waves for position in wave.positions()]
 
+    def _all_positions(self) -> List[Position]:
+        return self._all_boat_positions() + self._all_wave_positions()
+
     # TODO reevaluate if this is needed
     def _has_straight_boats(self) -> bool:
         return all(boat.is_straight() for boat in self._boats)
+
+    def _out_of_bounds(self) -> bool:
+        all_positions = self._all_positions()
+        all_rows = [position.row for position in all_positions]
+        all_columns = [position.column for position in all_positions]
+
+        return min(all_rows) < 0 or max(all_rows) >= len(self._waves) or min(all_columns) < 0 or max(all_columns) >= 9
 
     def __str__(self) -> str:
         board = [['-'] * 9 for _ in range(8)]
@@ -228,6 +246,17 @@ class State:
             row.append('\n')
 
         return ''.join([char for row in board for char in row])
+
+    def find_piece(self, id_: Union[str, int]) -> Piece:
+        for wave in self._waves:
+            if id_ == wave.id:
+                return wave
+
+        for boat in self._boats:
+            if id_ == boat.id:
+                return boat
+
+        raise ValueError('Unable to find Piece with id: ' + id_)
 
 
 class Puzzle:
@@ -259,7 +288,7 @@ class Puzzle:
         queue = deque([self._initial_state])
 
         # Map of each visited state to its previous state and the move that produced it.
-        states: Dict[State, Union[Tuple[State, Direction], None]] = {self._initial_state: None}
+        states: Dict[str, Union[Tuple[State, Direction], None]] = {str(self._initial_state): None}
 
         while not self._current_state.is_solved() and len(queue) > 0:
             self._current_state = queue.pop()
@@ -268,9 +297,12 @@ class Puzzle:
                 for direction in piece.directions():
                     new_state = self._current_state.move(piece, direction)
 
-                    if new_state not in states and new_state.is_valid():
+                    if new_state.is_valid() and str(new_state) not in states:
                         queue.append(new_state)
-                        states[new_state] = (self._current_state, direction)
+                        states[str(new_state)] = (self._current_state, direction)
+                        x = 1
+
+            print(len(states), len(queue))
 
         if not self._current_state.is_solved():
             raise Exception('Puzzle has no solution.')
