@@ -41,19 +41,18 @@ class Cardinal(Direction):
     RIGHT = 'R'
 
     def row_delta(self) -> int:
-        return self._deltas()[self].row
+        return self.DELTAS[self].row
 
     def column_delta(self) -> int:
-        return self._deltas()[self].column
+        return self.DELTAS[self].column
 
-    @staticmethod
-    def _deltas() -> Dict[Direction, Position]:
-        return {
-            Cardinal.LEFT: Position(0, -1),
-            Cardinal.RIGHT: Position(0, 1),
-            Cardinal.UP: Position(-1, 0),
-            Cardinal.DOWN: Position(1, 0),
-        }
+
+Cardinal.DELTAS = {
+    Cardinal.LEFT: Position(0, -1),
+    Cardinal.RIGHT: Position(0, 1),
+    Cardinal.UP: Position(-1, 0),
+    Cardinal.DOWN: Position(1, 0),
+}
 
 
 class Rotation(Direction):
