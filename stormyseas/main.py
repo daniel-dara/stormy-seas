@@ -14,7 +14,7 @@ input_ = """
 ###X###--
 """
 
-is_profile_enabled = False
+is_profile_enabled = True
 
 profile = cProfile.Profile()
 

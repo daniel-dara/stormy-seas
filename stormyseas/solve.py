@@ -137,7 +137,7 @@ class Boat(Piece):
         if direction == Rotation.COUNTER_CLOCKWISE:
             pass  # implement later
         else:
-            Piece.move(self, direction)
+            super().move(direction)
 
     def is_straight(self) -> bool:
         some_position = next(iter(self._positions))
