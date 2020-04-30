@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import time
+from time import time
 from abc import ABC, abstractmethod
 from collections import deque, defaultdict
-from copy import deepcopy
+from datetime import datetime
 from enum import Enum
 from typing import List, Dict, Tuple, Union, Set
 
@@ -63,21 +63,26 @@ class Rotation(Direction):
 
 
 class Piece(ABC):
-    def __init__(self, id_: Union[str, int]):
+    def __init__(self, id_: Union[str, int], positions: Set[Position]):
         self.id = id_
+        self._positions = positions
 
     @abstractmethod
     def directions(self) -> Tuple[Direction, ...]:
         """Return a list of directions that this piece is allowed to move. (independent of board state)"""
         pass
 
-    @abstractmethod
     def move(self, direction: Direction) -> None:
-        pass
+        if direction not in self.directions():
+            raise ValueError('Invalid move direction for ' + self.__class__.__name__ + ': ' + direction.name)
 
-    @abstractmethod
+        self._positions = set(
+            Position(position.row + direction.row_delta(), position.column + direction.column_delta())
+            for position in self._positions
+        )
+
     def positions(self) -> Set[Position]:
-        pass
+        return self._positions
 
     def collides(self, piece: Piece) -> bool:
         return len(self.positions().intersection(piece.positions())) > 0
@@ -97,22 +102,19 @@ class Piece(ABC):
 
 class Boat(Piece):
     def __init__(self, id_: str, positions: Set[Position]):
-        super().__init__(id_)
+        super().__init__(id_, positions)
         self._positions = positions
 
     def directions(self) -> Tuple[Direction, ...]:
         # noinspection PyTypeChecker
-        return tuple(Cardinal) + tuple(Rotation) if self.id == Puzzle.RED_BOAT_ID else ()
+        return tuple(Cardinal) + (tuple(Rotation) if len(self._positions) == 2 else ())
 
     def move(self, direction: Direction) -> None:
         if direction == Rotation.COUNTER_CLOCKWISE:
             # TODO implement boat rotation
             pass
         else:
-            self._positions = set(
-                Position(position.row + direction.row_delta(), position.column + direction.column_delta())
-                for position in self._positions
-            )
+            Piece.move(self, direction)
 
     def is_straight(self) -> bool:
         some_position = next(iter(self._positions))
@@ -122,29 +124,13 @@ class Boat(Piece):
                 all(some_position.column == position.column for position in self._positions)
         )
 
-    def positions(self) -> Set[Position]:
-        return self._positions
-
 
 class Wave(Piece):
-    def __init__(self, id_: int, bumps: Set[Position]):
-        super().__init__(id_)
-        self._bumps = bumps
+    def __init__(self, id_: int, positions: Set[Position]):
+        super().__init__(id_, positions)
 
     def directions(self) -> Tuple[Direction, ...]:
         return Cardinal.LEFT, Cardinal.RIGHT
-
-    def move(self, direction: Direction) -> None:
-        if direction not in self.directions():
-            raise ValueError('Invalid move direction for Wave: ' + direction.name)
-
-        self._bumps = set(
-            Position(position.row + direction.row_delta(), position.column + direction.column_delta())
-            for position in self._bumps
-        )
-
-    def positions(self) -> Set[Position]:
-        return self._bumps
 
 
 class Move:
@@ -192,14 +178,13 @@ class State:
 
     def move(self, piece: Piece, direction: Direction) -> State:
         """Moves the given piece in the given direction and returns a new state."""
-        new_state = deepcopy(self)
+        new_state = self.copy()
         new_piece = new_state.find_piece(piece.id)
         new_state._move(new_piece, direction)
         return new_state
 
     def _move(self, piece: Piece, direction: Direction) -> None:
         """Same as move() but modifies the current state instance."""
-        # TODO: Optimize state generation by caching pushes.
         if isinstance(piece, Wave):
             wave: Wave = piece
             self._push_piece(wave, direction, set())
@@ -210,6 +195,8 @@ class State:
                 boat.move(direction)
             else:
                 self._push_piece(boat, direction, set())
+        else:
+            raise ValueError('Impossible piece, not a wave or boat: ' + piece.__class__.__name__)
 
     def _push_piece(self, piece: Piece, direction: Direction, pushed_pieces: Set[Piece]) -> Set[Piece]:
         piece.move(direction)
@@ -226,12 +213,12 @@ class State:
                 if wave.collides(piece):
                     pushed_pieces |= self._push_piece(wave, direction, pushed_pieces)
         else:
-            raise ValueError('Impossible piece, not a wave or boat')
+            raise ValueError('Impossible piece, not a wave or boat: ' + piece.__class__.__name__)
 
         return pushed_pieces
 
     def is_valid(self) -> bool:
-        return not self._has_collision() and self._has_straight_boats() and not self._out_of_bounds()
+        return not self._has_collision() and not self._out_of_bounds()
 
     def _has_collision(self) -> bool:
         all_positions = self._all_positions()
@@ -245,10 +232,6 @@ class State:
 
     def _all_positions(self) -> List[Position]:
         return self._all_boat_positions() + self._all_wave_positions()
-
-    # TODO reevaluate if this is needed
-    def _has_straight_boats(self) -> bool:
-        return all(boat.is_straight() for boat in self._boats)
 
     def _out_of_bounds(self) -> bool:
         all_positions = self._all_positions()
@@ -281,6 +264,11 @@ class State:
 
         raise ValueError('Unable to find Piece with id: ' + str(id_))
 
+    def copy(self) -> State:
+        boats = tuple(Boat(boat.id, boat.positions()) for boat in self._boats)
+        waves = tuple(Wave(wave.id, wave.positions()) for wave in self._waves)
+        return State(boats, waves)
+
 
 class Puzzle:
     RED_BOAT_ID = 'X'
@@ -307,8 +295,9 @@ class Puzzle:
         self._current_state = self._initial_state
 
     def solve(self) -> Solution:
-        start = time.time()
-        step_start = time.time()
+        start = time()
+        step_start = time()
+        print('Started solving at: ' + datetime.fromtimestamp(start).strftime('%c'))
 
         """Finds the shortest set of moves to solve the puzzle using a breadth-first search of all possible states."""
         queue = deque([(self._initial_state, 0)])
@@ -333,26 +322,26 @@ class Puzzle:
 
             if steps != prev_steps:
                 print(steps, len(states), len(states) - prev_states_length, len(queue), len(queue) - prev_queue_length)
-                seconds = time.time() - step_start
+                seconds = time() - step_start
                 print('Time Elapsed: ' + str(int(seconds // 60)) + 'm ' + str(int(seconds % 60)) + 's')
-                step_start = time.time()
+                step_start = time()
 
-                if steps == 10:
-                    break
+                # if steps == 10:
+                #     break
 
             prev_steps = steps
             prev_states_length = len(states)
             prev_queue_length = len(queue)
 
-        seconds = time.time() - start
-        print('Completed!')
+        seconds = time() - start
+        print('Completed! Finished solving at: ' + datetime.fromtimestamp(time()).strftime('%c'))
         # print('Total Solutions: ' + str(total_solutions))
         print('Time Elapsed: ' + str(int(seconds // 60)) + 'm ' + str(int(seconds % 60)) + 's')
         print('Scanned ' + "{:,}".format(len(states)) + ' states with ' +
               "{:,}".format(len(queue)) + ' left in the queue.')
 
-        # if not self._current_state.is_solved():
-        #     raise Exception('Puzzle has no solution.')
+        if not self._current_state.is_solved():
+            raise Exception('Puzzle has no solution.')
 
         return self._generate_solution(states)
 
