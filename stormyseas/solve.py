@@ -27,9 +27,11 @@ class Position:
 
 
 class Direction(Enum):
+    @abstractmethod
     def row_delta(self) -> int:
         pass
 
+    @abstractmethod
     def column_delta(self) -> int:
         pass
 
@@ -55,10 +57,17 @@ Cardinal.DELTAS = {
 }
 
 
+# TODO Finish implementing Rotation and how it is handled in Boat.move()
 class Rotation(Direction):
     # Rotations are only allowed by the 2-square boat in 2x2 channels. Thus only one rotational direction is needed
     # since combined with the use of cardinal directions, the same final positions can be achieved.
     COUNTER_CLOCKWISE = 0
+
+    def row_delta(self) -> int:
+        pass  # implement later
+
+    def column_delta(self) -> int:
+        pass  # implement later
 
 
 class Piece(ABC):
@@ -110,8 +119,7 @@ class Boat(Piece):
 
     def move(self, direction: Direction) -> None:
         if direction == Rotation.COUNTER_CLOCKWISE:
-            # TODO implement boat rotation
-            pass
+            pass  # implement later
         else:
             Piece.move(self, direction)
 
