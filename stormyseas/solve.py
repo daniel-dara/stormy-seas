@@ -9,6 +9,25 @@ from typing import List, Dict, Tuple, Union, Set
 
 
 class Position:
+    _pool: Dict[int, Dict[int, Position]] = {}
+    _use_pool = False
+
+    def __new__(cls, *args, **kwargs):
+        if cls._use_pool:
+            return cls._pool[args[0]][args[1]]
+        else:
+            return super(Position, cls).__new__(cls)
+
+    @staticmethod
+    def initialize_pool():
+        for row in range(0 - 1, 8 + 1):
+            Position._pool[row] = {}
+
+            for column in range(0 - 1, 9 + 1):
+                Position._pool[row][column] = Position(row, column)
+
+        Position._use_pool = True
+
     def __init__(self, row: int, column: int):
         self.row = row
         self.column = column
@@ -19,11 +38,8 @@ class Position:
     def __repr__(self) -> str:
         return self.__str__()
 
-    def __eq__(self, other) -> bool:
-        return self.row == other.row and self.column == other.column
 
-    def __hash__(self) -> int:
-        return hash((self.row, self.column))
+Position.initialize_pool()
 
 
 class Direction(Enum):
