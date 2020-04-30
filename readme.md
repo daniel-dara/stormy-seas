@@ -6,9 +6,11 @@ This repo is an attempt at writing an auto-solver for the puzzle by using depth-
 # Puzzle examples
 * [problem_1](https://user-images.githubusercontent.com/1920621/80294615-b4d50880-8738-11ea-8cc4-894ac76a2f74.jpg)
 * [solution_1](https://user-images.githubusercontent.com/1920621/80294652-ca4a3280-8738-11ea-9fda-6aa1ea3460f6.jpg)
+  * 30 steps
 * [solution_2](https://user-images.githubusercontent.com/1920621/80294654-cc13f600-8738-11ea-9160-b67fae22b393.jpg)
+  * 19 steps
 * [solution_3](https://user-images.githubusercontent.com/1920621/80294655-ccac8c80-8738-11ea-80eb-d5895066de72.jpg)
-
+  * 53 steps
 # Development Notes
 ## TODO
 * Finish coding is_solvable()

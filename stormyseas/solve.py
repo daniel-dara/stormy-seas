@@ -162,6 +162,11 @@ class Move:
         self._direction = direction
         self._distance = distance
 
+    def notation(self) -> str:
+        id_ = self._piece.id if isinstance(self._piece, Boat) else str(self._piece.id + 1)
+        # noinspection PyTypeChecker
+        return id_ + self._direction.value + str(self._distance)
+
     def __str__(self) -> str:
         # noinspection PyTypeChecker
         return str(self._piece.id) + self._direction.value + str(self._distance)
@@ -174,9 +179,9 @@ class Solution:
     def __init__(self, moves: List[Move]):
         self._moves = moves
 
-    def __str__(self) -> str:
+    def notation(self) -> str:
         """Return a string representation of the solution's moves using Solution Notation."""
-        return ', '.join(str(move) for move in self._moves)
+        return ', '.join(move.notation() for move in self._moves)
 
     def length(self) -> int:
         return len(self._moves)
@@ -348,9 +353,6 @@ class Puzzle:
                 seconds = time() - step_start
                 print('Time Elapsed: ' + str(int(seconds // 60)) + 'm ' + str(int(seconds % 60)) + 's')
                 step_start = time()
-
-                # if steps == 10:
-                #     break
 
             prev_steps = steps
             prev_states_length = len(states)

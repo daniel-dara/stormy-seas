@@ -3,18 +3,9 @@ import cProfile
 from stormyseas import profile_export
 from stormyseas.solve import *
 
-input_ = """
---#-#-###
---#-###-#
---#-##-##
---#-#-###
---#-#-###
---#-###-#
--##X##-#-
-###X###--
-"""
+input_ = open('../tests/input/problem_3.txt').read()
 
-is_profile_enabled = True
+is_profile_enabled = False
 
 profile = cProfile.Profile()
 
@@ -23,7 +14,7 @@ if is_profile_enabled:
 
 solution = Puzzle(input_).solve()
 print('Solution has ' + str(solution.length()) + ' moves.')
-print(solution)
+print(solution.notation())
 
 if is_profile_enabled:
     profile.disable()
