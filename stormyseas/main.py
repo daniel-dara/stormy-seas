@@ -14,13 +14,18 @@ input_ = """
 ###X###--
 """
 
+is_profile_enabled = False
+
 profile = cProfile.Profile()
-profile.enable()
+
+if is_profile_enabled:
+    profile.enable()
 
 solution = Puzzle(input_).solve()
 print('Solution has ' + str(solution.length()) + ' moves.')
 print(solution)
 
-profile.disable()
-profile_export.to_csv(profile, 'profile.csv')
+if is_profile_enabled:
+    profile.disable()
+    profile_export.to_csv(profile, 'profile.csv')
 
