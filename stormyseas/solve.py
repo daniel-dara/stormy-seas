@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+from itertools import chain
 from time import time
 from abc import ABC, abstractmethod
 from collections import deque, defaultdict, namedtuple
 from datetime import datetime
 from enum import Enum
-from typing import List, Dict, Tuple, Union, Set
+from typing import List, Dict, Tuple, Union, Set, Iterable
 
 Position = namedtuple('Position', 'row column')
 
@@ -40,7 +41,7 @@ Cardinal.DELTAS = {
 }
 
 
-# TODO Finish implementing Rotation and how it is handled in Boat.move()
+# TODO Finish implementing Rotation and how it is handled in Boat.move(), prevent rotating through a piece.
 class Rotation(Direction):
     COUNTER_CLOCKWISE = 0
 
@@ -93,7 +94,7 @@ class Piece(ABC):
         return '{' + str(self.id) + ': ' + ', '.join(str(position) for position in self.positions) + '}'
 
     def __repr__(self) -> str:
-        return str(self)
+        return self.__str__()
 
     def __eq__(self, other) -> bool:
         return self.id == other.id
@@ -123,9 +124,8 @@ class Move:
         self._distance = distance
 
     def notation(self) -> str:
-        id_ = self._piece.id if isinstance(self._piece, Boat) else self._piece.id
         # noinspection PyTypeChecker
-        return id_ + self._direction.value + str(self._distance)
+        return self._piece.id + self._direction.value + str(self._distance)
 
     def __str__(self) -> str:
         # noinspection PyTypeChecker
@@ -159,32 +159,35 @@ class State:
         red_boat = self.find_piece(Puzzle.RED_BOAT_ID)
         return red_boat.positions == Puzzle.FINISH
 
-    def pieces(self) -> Tuple[Piece]:
-        """Returns a list of all the pieces."""
-        # noinspection PyTypeChecker
-        return self._boats + self._waves
+    def pieces(self) -> Iterable[Piece]:
+        """Returns an iterable of all the pieces."""
+        return chain(self._boats, self._waves)
+
+    def find_piece(self, id_: str) -> Piece:
+        return next(piece for piece in chain(self._waves, self._boats) if piece.id == id_)
+
+    def copy(self) -> State:
+        boats = tuple(Boat(boat.id, boat.positions) for boat in self._boats)
+        waves = tuple(Wave(wave.id, wave.positions) for wave in self._waves)
+        return State(boats, waves)
 
     def move(self, piece: Piece, direction: Direction) -> State:
-        """Moves the given piece in the given direction and returns a new state."""
+        """Moves the piece in the direction and returns a new state. Handles moving multiple pieces at a time if they
+        push each other.
+        """
         new_state = self.copy()
         new_piece = new_state.find_piece(piece.id)
         new_state._move(new_piece, direction)
         return new_state
 
     def _move(self, piece: Piece, direction: Direction) -> None:
-        """Same as move() but modifies the current state instance."""
-        if isinstance(piece, Wave):
-            wave: Wave = piece
-            self._push_piece(wave, direction, set())
-        elif isinstance(piece, Boat):
-            boat: Boat = piece
-
-            if direction in (Cardinal.UP, Cardinal.DOWN, Rotation.COUNTER_CLOCKWISE):
-                boat.move(direction)
-            else:
-                self._push_piece(boat, direction, set())
+        """Same as move() but modifies the current instance."""
+        if direction in (Cardinal.UP, Cardinal.DOWN, Rotation.COUNTER_CLOCKWISE):
+            # Optimization: There is no need to push pieces vertically since waves are not capable of vertical movement
+            # and a boat pushing a boat is equivalent to moving one boat and then the other.
+            piece.move(direction)
         else:
-            raise ValueError('Impossible piece, not a wave or boat: ' + piece.__class__.__name__)
+            self._push_piece(piece, direction, set())
 
     def _push_piece(self, piece: Piece, direction: Direction, pushed_pieces: Set[Piece]) -> Set[Piece]:
         piece.move(direction)
@@ -209,24 +212,15 @@ class State:
         return not self._has_collision() and not self._out_of_bounds()
 
     def _has_collision(self) -> bool:
-        all_positions = self._all_positions()
-        return len(all_positions) != len(set(all_positions))
-
-    def _all_boat_positions(self) -> List[Position]:
-        return [position for boat in self._boats for position in boat.positions]
-
-    def _all_wave_positions(self) -> List[Position]:
-        return [position for wave in self._waves for position in wave.positions]
-
-    def _all_positions(self) -> List[Position]:
-        return self._all_boat_positions() + self._all_wave_positions()
+        positions_list = list(self._all_positions())
+        return len(positions_list) != len(set(positions_list))
 
     def _out_of_bounds(self) -> bool:
-        all_positions = self._all_positions()
-        all_rows = [position.row for position in all_positions]
-        all_columns = [position.column for position in all_positions]
-
+        all_rows, all_columns = zip(*[(position.row, position.column) for position in self._all_positions()])
         return min(all_rows) < 0 or max(all_rows) >= len(self._waves) or min(all_columns) < 0 or max(all_columns) >= 9
+
+    def _all_positions(self) -> Iterable[Position]:
+        return chain.from_iterable(piece.positions for piece in self.pieces())
 
     def __str__(self) -> str:
         board = [['-'] * 9 for _ in range(8)]
@@ -240,22 +234,6 @@ class State:
                 board[position.row][position.column] = boat.id
 
         return '\n'.join(''.join(row) for row in board)
-
-    def find_piece(self, id_: str) -> Piece:
-        for wave in self._waves:
-            if id_ == wave.id:
-                return wave
-
-        for boat in self._boats:
-            if id_ == boat.id:
-                return boat
-
-        raise ValueError('Unable to find Piece with id: ' + str(id_))
-
-    def copy(self) -> State:
-        boats = tuple(Boat(boat.id, boat.positions) for boat in self._boats)
-        waves = tuple(Wave(wave.id, wave.positions) for wave in self._waves)
-        return State(boats, waves)
 
 
 Size = namedtuple('Size', 'rows columns')
