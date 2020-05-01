@@ -7,45 +7,7 @@ from datetime import datetime
 from enum import Enum
 from typing import List, Dict, Tuple, Union, Set
 
-
-# Position = namedtuple('Position', 'row column')
-
-class Position:
-    _cache: Dict[int, Dict[int, Position]] = {}
-    _use_cache = False
-
-    def __init__(self, row: int, column: int):
-        self.row = row
-        self.column = column
-
-    def __new__(cls, *args, **kwargs):
-        if cls._use_cache:
-            return cls._cache[args[0]][args[1]]
-        else:
-            return super(Position, cls).__new__(cls)
-
-    @staticmethod
-    def initialize_cache(rows: int, columns: int):
-        """Initializes the cache with an instance of every possible position that will be needed. Should be called once
-        before constructing a Position.
-        """
-        # The grid is expanded by 1 in every direction to account for positions when a piece moves off the board.
-        for row in range(-1, rows + 1):
-            Position._cache[row] = {}
-
-            for column in range(-1, columns + 1):
-                Position._cache[row][column] = Position(row, column)
-
-        Position._use_cache = True
-
-    def __str__(self) -> str:
-        return '(' + str(self.row) + ', ' + str(self.column) + ')'
-
-    def __repr__(self) -> str:
-        return self.__str__()
-
-
-Position.initialize_cache(8, 9)
+Position = namedtuple('Position', 'row column')
 
 
 class Direction(Enum):
