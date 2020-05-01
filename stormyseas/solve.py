@@ -2,35 +2,41 @@ from __future__ import annotations
 
 from time import time
 from abc import ABC, abstractmethod
-from collections import deque, defaultdict
+from collections import deque, defaultdict, namedtuple
 from datetime import datetime
 from enum import Enum
 from typing import List, Dict, Tuple, Union, Set
 
 
+# Position = namedtuple('Position', 'row column')
+
 class Position:
-    _pool: Dict[int, Dict[int, Position]] = {}
-    _use_pool = False
-
-    def __new__(cls, *args, **kwargs):
-        if cls._use_pool:
-            return cls._pool[args[0]][args[1]]
-        else:
-            return super(Position, cls).__new__(cls)
-
-    @staticmethod
-    def initialize_pool():
-        for row in range(0 - 1, 8 + 1):
-            Position._pool[row] = {}
-
-            for column in range(0 - 1, 9 + 1):
-                Position._pool[row][column] = Position(row, column)
-
-        Position._use_pool = True
+    _cache: Dict[int, Dict[int, Position]] = {}
+    _use_cache = False
 
     def __init__(self, row: int, column: int):
         self.row = row
         self.column = column
+
+    def __new__(cls, *args, **kwargs):
+        if cls._use_cache:
+            return cls._cache[args[0]][args[1]]
+        else:
+            return super(Position, cls).__new__(cls)
+
+    @staticmethod
+    def initialize_cache(rows: int, columns: int):
+        """Initializes the cache with an instance of every possible position that will be needed. Should be called once
+        before constructing a Position.
+        """
+        # The grid is expanded by 1 in every direction to account for positions when a piece moves off the board.
+        for row in range(-1, rows + 1):
+            Position._cache[row] = {}
+
+            for column in range(-1, columns + 1):
+                Position._cache[row][column] = Position(row, column)
+
+        Position._use_cache = True
 
     def __str__(self) -> str:
         return '(' + str(self.row) + ', ' + str(self.column) + ')'
@@ -39,7 +45,7 @@ class Position:
         return self.__str__()
 
 
-Position.initialize_pool()
+Position.initialize_cache(8, 9)
 
 
 class Direction(Enum):
@@ -91,18 +97,18 @@ class Piece(ABC):
         self.id = id_
         self._positions = positions
 
+    @property
     def positions(self) -> Set[Position]:
         return self._positions
 
-    positions = property(positions)
-
+    @property
     @abstractmethod
     def directions(self) -> Tuple[Direction, ...]:
-        """Return a list of directions that this piece is allowed to move. (independent of board state)"""
+        """Return a list of the directions that this piece is allowed to move in. (regardless of board state)"""
         pass
 
     def move(self, direction: Direction) -> None:
-        if direction not in self.directions():
+        if direction not in self.directions:
             raise ValueError('Invalid move direction for ' + self.__class__.__name__ + ': ' + direction.name)
 
         self._positions = set(
@@ -131,6 +137,7 @@ class Boat(Piece):
         super().__init__(id_, positions)
         self._positions = positions
 
+    @property
     def directions(self) -> Tuple[Direction, ...]:
         # noinspection PyTypeChecker
         return tuple(Cardinal) + (tuple(Rotation) if len(self._positions) == 2 else ())
@@ -154,6 +161,7 @@ class Wave(Piece):
     def __init__(self, id_: int, positions: Set[Position]):
         super().__init__(id_, positions)
 
+    @property
     def directions(self) -> Tuple[Direction, ...]:
         return Cardinal.LEFT, Cardinal.RIGHT
 
@@ -199,7 +207,7 @@ class State:
     def is_solved(self) -> bool:
         """Checks if the red boat has reached the finish."""
         red_boat = next(boat for boat in self._boats if boat.id == Puzzle.RED_BOAT_ID)
-        return red_boat.positions == Puzzle.FINISH_POSITIONS
+        return red_boat.positions == Puzzle.FINISH
 
     def pieces(self) -> Tuple[Piece]:
         """Returns a list of all the pieces."""
@@ -300,9 +308,13 @@ class State:
         return State(boats, waves)
 
 
+Size = namedtuple('Size', 'rows columns')
+
+
 class Puzzle:
+    SIZE = Size(8, 9)
     RED_BOAT_ID = 'X'
-    FINISH_POSITIONS = {Position(6, 5), Position(7, 5)}
+    FINISH = {Position(6, 5), Position(7, 5)}
 
     def __init__(self, input_: str):
         boat_positions: Dict[str, Set[Position]] = defaultdict(lambda: set())
@@ -355,7 +367,7 @@ class Puzzle:
                 continue
 
             for piece in self._current_state.pieces():
-                for direction in piece.directions():
+                for direction in piece.directions:
                     new_state = self._current_state.move(piece, direction)
 
                     if new_state.is_valid() and str(new_state) not in states:
