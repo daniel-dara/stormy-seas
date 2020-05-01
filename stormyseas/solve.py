@@ -46,7 +46,7 @@ class Rotation(Direction):
 
     def transform(self, positions: Set[Position]) -> Set[Position]:
         if len(positions) != 2:
-            raise ValueError('Puzzle Constraint: Only two length pieces should be rotated. '
+            raise ValueError('Constraint: Only two length pieces should be rotated. '
                              + 'Attempted to rotate piece of length %d.' % len(positions))
 
         rows, columns = zip(*positions)
@@ -62,7 +62,7 @@ class Rotation(Direction):
 
 
 class Piece(ABC):
-    def __init__(self, id_: Union[str, int], positions: Set[Position]):
+    def __init__(self, id_: str, positions: Set[Position]):
         self.id = id_
         self._positions = positions
 
@@ -99,10 +99,6 @@ class Piece(ABC):
 
 
 class Boat(Piece):
-    def __init__(self, id_: str, positions: Set[Position]):
-        super().__init__(id_, positions)
-        self._positions = positions
-
     @property
     def directions(self) -> Tuple[Direction, ...]:
         # noinspection PyTypeChecker
@@ -124,9 +120,6 @@ class Boat(Piece):
 
 
 class Wave(Piece):
-    def __init__(self, id_: int, positions: Set[Position]):
-        super().__init__(id_, positions)
-
     @property
     def directions(self) -> Tuple[Direction, ...]:
         return Cardinal.LEFT, Cardinal.RIGHT
@@ -139,7 +132,7 @@ class Move:
         self._distance = distance
 
     def notation(self) -> str:
-        id_ = self._piece.id if isinstance(self._piece, Boat) else str(self._piece.id + 1)
+        id_ = self._piece.id if isinstance(self._piece, Boat) else self._piece.id
         # noinspection PyTypeChecker
         return id_ + self._direction.value + str(self._distance)
 
@@ -257,7 +250,7 @@ class State:
 
         return '\n'.join(''.join(row) for row in board)
 
-    def find_piece(self, id_: Union[str, int]) -> Piece:
+    def find_piece(self, id_: str) -> Piece:
         for wave in self._waves:
             if id_ == wave.id:
                 return wave
@@ -295,7 +288,8 @@ class Puzzle:
                 elif character != '-':
                     boat_positions[character].add(Position(row, column))
 
-            waves.append(Wave(row, wave_positions))
+            # Constraint: Rows are 1-based in solution notation.
+            waves.append(Wave(str(row + 1), wave_positions))
 
         boats = [Boat(id_, positions) for id_, positions in boat_positions.items()]
 
