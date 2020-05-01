@@ -193,18 +193,12 @@ class State:
         piece.move(direction)
         pushed_pieces.add(piece)
 
-        if isinstance(piece, Wave):
-            for boat in self._boats:
-                if piece.collides_with(boat):
-                    pushed_pieces |= self._push_piece(boat, direction, pushed_pieces)
-        elif isinstance(piece, Boat):
-            for position in piece.positions:
-                wave = self._waves[position.row]
-
-                if wave.collides_with(piece):
-                    pushed_pieces |= self._push_piece(wave, direction, pushed_pieces)
-        else:
-            raise ValueError('Impossible piece, not a wave or boat: ' + piece.__class__.__name__)
+        for other_piece in self.pieces():
+            # Optimization: Pieces of the same type can't push each other. Waves are orthogonal and will never collide.
+            # Boats can collide but there are no waves with enough room for two adjacent boats to push horizontally.
+            if type(piece) != type(other_piece):
+                if piece.collides_with(other_piece):
+                    pushed_pieces |= self._push_piece(other_piece, direction, pushed_pieces)
 
         return pushed_pieces
 
