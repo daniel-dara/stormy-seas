@@ -309,9 +309,9 @@ class Puzzle:
         return self._solve(self._SearchType.ALL)
 
     def _solve(self, search_type: _SearchType) -> List[Solution]:
-        start = time()
+        start_time = time()
         step_start = time()
-        print('Started solving at: %s' % datetime.fromtimestamp(start).strftime('%c'))
+        print('Started solving at: %s' % datetime.fromtimestamp(start_time).strftime('%X'))
 
         """Finds the shortest set of moves to solve the puzzle using a breadth-first search of all possible states."""
         queue = deque([(self._initial_state, 0)])
@@ -319,9 +319,9 @@ class Puzzle:
         # Map of each visited state to its previous state and the move that produced it.
         states: Dict[str, Union[Tuple[State, Move, int], None]] = {str(self._initial_state): None}
 
-        prev_steps = 0
-        prev_states_length = len(states)
-        prev_queue_length = len(queue)
+        previous_steps = 0
+        previous_states_length = len(states)
+        previous_queue_length = len(queue)
 
         solutions: List[Solution] = []
 
@@ -340,30 +340,34 @@ class Puzzle:
                         queue.append((new_state, steps + 1))
                         states[str(new_state)] = (self._current_state, Move(piece, direction), steps + 1)
 
-            if steps != prev_steps:
+            if steps != previous_steps:
+                seconds = time() - start_time
+                step_seconds = time() - step_start
+                step_start = time()
+
                 print(
-                    'steps=%d, states=%d, dstate=%d, queue=%d, dqueue=%d' %
+                    'steps=%-2d  states=%-6d%+-5d  queue=%-4d  %+-5d  time=%dm %-3s  %+dm %ds' %
                     (
                         steps,
                         len(states),
-                        len(states) - prev_states_length,
+                        len(states) - previous_states_length,
                         len(queue),
-                        len(queue) - prev_queue_length
+                        len(queue) - previous_queue_length,
+                        seconds // 60,
+                        str(round(seconds % 60)) + 's',
+                        step_seconds // 60,
+                        step_seconds % 60,
                     )
                 )
 
-                seconds = time() - step_start
-                print('Time Elapsed: %dm %ds' % (seconds // 60, seconds % 60))
-                step_start = time()
+                previous_steps = steps
+                previous_states_length = len(states)
+                previous_queue_length = len(queue)
 
-            prev_steps = steps
-            prev_states_length = len(states)
-            prev_queue_length = len(queue)
-
-        seconds = time() - start
-        print('Completed! Finished solving at: %s' % datetime.fromtimestamp(time()).strftime('%c'))
+        seconds = time() - start_time
+        print('Completed! Finished solving at: %s' % datetime.fromtimestamp(time()).strftime('%X'))
         print('Total Solutions: %d' % len(solutions))
-        print('Time Elapsed: %dm %ds' % (seconds // 60, seconds % 60))
+        print('Total Time Elapsed: %dm %ds' % (seconds // 60, seconds % 60))
         print('Scanned %s states with %s left in the queue.' % ("{:,}".format(len(states)), "{:,}".format(len(queue))))
 
         if search_type == self._SearchType.SHORTEST and not self._current_state.is_solved():
