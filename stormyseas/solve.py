@@ -46,7 +46,7 @@ class Rotation(Direction):
 
     def transform(self, positions: Set[Position]) -> Set[Position]:
         if len(positions) != 2:
-            raise ValueError('Constraint: Only two length pieces should be rotated. '
+            raise ValueError('Only two length pieces should be rotated. '
                              + 'Attempted to rotate piece of length %d.' % len(positions))
 
         rows, columns = zip(*positions)
@@ -77,12 +77,16 @@ class Piece(ABC):
         pass
 
     def move(self, direction: Direction) -> None:
+        if isinstance(direction, Rotation):
+            # test later
+            return
+
         if direction not in self.directions:
             raise ValueError('Invalid move direction for ' + self.__class__.__name__ + ': ' + direction.name)
 
         self._positions = direction.transform(self._positions)
 
-    def collides(self, piece: Piece) -> bool:
+    def collides_with(self, piece: Piece) -> bool:
         return len(self.positions.intersection(piece.positions)) > 0
 
     def __str__(self) -> str:
@@ -101,22 +105,9 @@ class Piece(ABC):
 class Boat(Piece):
     @property
     def directions(self) -> Tuple[Direction, ...]:
+        # Optimization: The game board is sized such that only 2 length boats will ever have room to rotate.
         # noinspection PyTypeChecker
         return tuple(Cardinal) + (tuple(Rotation) if len(self._positions) == 2 else ())
-
-    def move(self, direction: Direction) -> None:
-        if direction == Rotation.COUNTER_CLOCKWISE:
-            pass  # implement later
-        else:
-            super().move(direction)
-
-    def is_straight(self) -> bool:
-        some_position = next(iter(self._positions))
-
-        return (
-                all(some_position.row == position.row for position in self._positions) or
-                all(some_position.column == position.column for position in self._positions)
-        )
 
 
 class Wave(Piece):
@@ -165,7 +156,7 @@ class State:
 
     def is_solved(self) -> bool:
         """Checks if the red boat has reached the finish."""
-        red_boat = next(boat for boat in self._boats if boat.id == Puzzle.RED_BOAT_ID)
+        red_boat = self.find_piece(Puzzle.RED_BOAT_ID)
         return red_boat.positions == Puzzle.FINISH
 
     def pieces(self) -> Tuple[Piece]:
@@ -188,7 +179,7 @@ class State:
         elif isinstance(piece, Boat):
             boat: Boat = piece
 
-            if direction in (Cardinal.UP, Cardinal.DOWN):
+            if direction in (Cardinal.UP, Cardinal.DOWN, Rotation.COUNTER_CLOCKWISE):
                 boat.move(direction)
             else:
                 self._push_piece(boat, direction, set())
@@ -201,13 +192,13 @@ class State:
 
         if isinstance(piece, Wave):
             for boat in self._boats:
-                if piece.collides(boat):
+                if piece.collides_with(boat):
                     pushed_pieces |= self._push_piece(boat, direction, pushed_pieces)
         elif isinstance(piece, Boat):
             for position in piece.positions:
                 wave = self._waves[position.row]
 
-                if wave.collides(piece):
+                if wave.collides_with(piece):
                     pushed_pieces |= self._push_piece(wave, direction, pushed_pieces)
         else:
             raise ValueError('Impossible piece, not a wave or boat: ' + piece.__class__.__name__)
