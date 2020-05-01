@@ -12,11 +12,7 @@ Position = namedtuple('Position', 'row column')
 
 class Direction(Enum):
     @abstractmethod
-    def row_delta(self) -> int:
-        pass
-
-    @abstractmethod
-    def column_delta(self) -> int:
+    def transform(self, positions: Set[Position]) -> Set[Position]:
         pass
 
 
@@ -26,11 +22,14 @@ class Cardinal(Direction):
     LEFT = 'L'
     RIGHT = 'R'
 
-    def row_delta(self) -> int:
-        return self.DELTAS[self].row
-
-    def column_delta(self) -> int:
-        return self.DELTAS[self].column
+    def transform(self, positions: Set[Position]) -> Set[Position]:
+        return {
+            Position(
+                position.row + self.DELTAS[self].row,
+                position.column + self.DELTAS[self].column
+            )
+            for position in positions
+        }
 
 
 Cardinal.DELTAS = {
@@ -43,15 +42,23 @@ Cardinal.DELTAS = {
 
 # TODO Finish implementing Rotation and how it is handled in Boat.move()
 class Rotation(Direction):
-    # Rotations are only allowed by the 2-square boat in 2x2 channels. Thus only one rotational direction is needed
-    # since combined with the use of cardinal directions, the same final positions can be achieved.
     COUNTER_CLOCKWISE = 0
 
-    def row_delta(self) -> int:
-        pass  # implement later
+    def transform(self, positions: Set[Position]) -> Set[Position]:
+        if len(positions) != 2:
+            raise ValueError('Puzzle Constraint: Only two length pieces should be rotated. '
+                             + 'Attempted to rotate piece of length %d.' % len(positions))
 
-    def column_delta(self) -> int:
-        pass  # implement later
+        rows, columns = zip(*positions)
+        pivot = Position(min(rows), max(columns))
+        anchor = Position(max(rows), min(columns))
+
+        if rows[0] == rows[1]:
+            delta = Position(-1, -1)
+        else:
+            delta = Position(1, -1)
+
+        return {anchor, Position(pivot.row + delta.row, pivot.column + delta.column)}
 
 
 class Piece(ABC):
@@ -73,10 +80,7 @@ class Piece(ABC):
         if direction not in self.directions:
             raise ValueError('Invalid move direction for ' + self.__class__.__name__ + ': ' + direction.name)
 
-        self._positions = set(
-            Position(position.row + direction.row_delta(), position.column + direction.column_delta())
-            for position in self._positions
-        )
+        self._positions = direction.transform(self._positions)
 
     def collides(self, piece: Piece) -> bool:
         return len(self.positions.intersection(piece.positions)) > 0
