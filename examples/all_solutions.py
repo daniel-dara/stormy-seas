@@ -1,8 +1,8 @@
 from stormyseas.solve import Puzzle
 
 input_ = open('../tests/input/problem_2.txt').read()
-
 solutions = Puzzle(input_).all_solutions()
+
 print('Found %d solutions.' % len(solutions))
 
 shortest_solution = min(solutions, key=lambda solution: solution.length())

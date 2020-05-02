@@ -5,7 +5,7 @@ from stormyseas.solve import *
 
 is_profile_enabled = True
 # noinspection PyProtectedMember
-search_type = Puzzle._SearchType.ALL
+search_type = Puzzle._SearchType.SHORTEST
 
 input_ = open('../tests/input/problem_2.txt').read()
 
@@ -31,4 +31,4 @@ else:
 
 if is_profile_enabled:
     profile.disable()
-    profile_export.to_csv(profile, 'profile.csv')
+    profile_export.to_csv(profile, 'logs/profile.csv')
