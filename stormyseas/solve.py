@@ -264,11 +264,12 @@ class Puzzle:
         return self._solve(self._SearchType.ALL)
 
     def _solve(self, search_type: _SearchType) -> List[Solution]:
+        """Finds the shortest set of moves to solve the puzzle using a breadth-first search of all possible states."""
         start_time = time()
         step_start = time()
+
         print('Started solving at: %s' % datetime.fromtimestamp(start_time).strftime('%X'))
 
-        """Finds the shortest set of moves to solve the puzzle using a breadth-first search of all possible states."""
         queue = deque([(self._initial_state, 0)])
 
         # Map of each visited state to its previous state and the move that produced it.
@@ -333,11 +334,16 @@ class Puzzle:
     def _generate_solution(self, states: Dict) -> Solution:
         """Generates the solution (list of moves) while iterating backwards from the final state to the initial state.
         """
-        moves: List[Move] = []
+        moves = []
 
         current_state = self._current_state
 
         while current_state != self._initial_state:
+            # TODO find an elegant way to fix the typehints
+            previous_state: State
+            previous_move: Move
+            steps: int
+
             previous_state, previous_move, steps = states[current_state]
             moves.insert(0, previous_move)
             current_state = previous_state
