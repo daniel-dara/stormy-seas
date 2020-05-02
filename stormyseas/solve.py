@@ -81,6 +81,10 @@ class Piece(NamedTuple):
         """Return a list of the directions that this piece is allowed to move in. (regardless of board state)"""
         pass
 
+    @abstractmethod
+    def character(self, position: Position) -> str:
+        pass
+
     def move(self, direction: Direction) -> Piece:
         if isinstance(direction, Rotation):
             # test later
@@ -118,6 +122,9 @@ class Boat(Piece):
         # noinspection PyTypeChecker
         return tuple(Cardinal)  # + (tuple(Rotation) if len(self.positions) == 2 else ())
 
+    def character(self, position: Position) -> str:
+        return self.RED_BOAT_ID.lower() if self.id == self.RED_BOAT_ID and self.positions[0] == position else self.id
+
 
 class Wave(Piece):
     LENGTH = 9
@@ -128,6 +135,9 @@ class Wave(Piece):
     @property
     def directions(self) -> Tuple[Direction, ...]:
         return Cardinal.LEFT, Cardinal.RIGHT
+
+    def character(self, position: Position) -> str:
+        return self.BLOCK
 
 
 class Move:
@@ -244,12 +254,8 @@ class State:
             board = [[Wave.GAP] * Wave.LENGTH for _ in range(Wave.COUNT)]
 
             for piece in self._pieces.values():
-                if isinstance(piece, Wave):
-                    for position in piece.positions:
-                        board[position.row][position.column] = Wave.BLOCK
-                else:
-                    for position in piece.positions:
-                        board[position.row][position.column] = piece.id
+                for position in piece.positions:
+                    board[position.row][position.column] = piece.character(position)
 
             self._str_cache = '\n'.join(''.join(row) for row in board)
 
