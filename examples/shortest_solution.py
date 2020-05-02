@@ -5,4 +5,3 @@ solution = Puzzle(input_).shortest_solution()
 
 print('Solution has %d moves.' % solution.length())
 print(solution.notation())
-

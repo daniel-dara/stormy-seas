@@ -3,12 +3,22 @@ from __future__ import annotations
 from itertools import chain
 from time import time
 from abc import ABC, abstractmethod
-from collections import deque, defaultdict, namedtuple
+from collections import deque, defaultdict
 from datetime import datetime
 from enum import Enum
-from typing import List, Dict, Tuple, Union, Set, Iterable
+from typing import List, Dict, Tuple, Union, Set, Iterable, NamedTuple
 
-Position = namedtuple('Position', 'row column')
+
+class Position(NamedTuple):
+    row: int
+    column: int
+    is_front: bool = False
+
+    def __eq__(self, other: Position) -> bool:
+        return self.row == other.row and self.column == other.column
+
+    def __hash__(self) -> int:
+        return hash((self.row, self.column))
 
 
 class Direction(Enum):
@@ -27,7 +37,8 @@ class Cardinal(Direction):
         return {
             Position(
                 position.row + self.DELTAS[self].row,
-                position.column + self.DELTAS[self].column
+                position.column + self.DELTAS[self].column,
+                position.is_front
             )
             for position in positions
         }
@@ -162,9 +173,9 @@ class State:
         self._str_cache = None
 
     def is_solved(self) -> bool:
-        """Checks if the red boat has reached the finish."""
+        """Checks if the red boat has reached the finish position (the port)."""
         red_boat = self.find_piece(Boat.RED_BOAT_ID)
-        return red_boat.positions == Puzzle.FINISH
+        return red_boat.positions == Puzzle.PORT and max(red_boat.positions).is_front
 
     def pieces(self) -> Iterable[Piece]:
         """Returns an iterable of all the pieces."""
@@ -243,7 +254,7 @@ class State:
 
             for boat in self._boats:
                 for position in boat.positions:
-                    board[position.row][position.column] = boat.id
+                    board[position.row][position.column] = boat.id.lower() if position.is_front else boat.id
 
             self._str_cache = '\n'.join(''.join(row) for row in board)
 
@@ -251,7 +262,7 @@ class State:
 
 
 class Puzzle:
-    FINISH = {Position(6, 5), Position(7, 5)}
+    PORT = {Position(6, 5), Position(7, 5)}
 
     def __init__(self, input_: str):
         self._initial_state = self._Input(input_).parse_state()
@@ -365,11 +376,12 @@ class Puzzle:
             for row, line in enumerate(self.input.strip().split('\n')):
                 wave_positions = set()
 
+                character: str  # Fixes Pycharm Type Inference bug
                 for column, character in enumerate(line.strip()):
                     if character == Wave.BLOCK:
                         wave_positions.add(Position(row, column))
                     elif character != Wave.GAP:
-                        boat_positions[character].add(Position(row, column))
+                        boat_positions[character.upper()].add(Position(row, column, character.islower()))
 
                 # Constraint: Rows are 1-based in solution notation.
                 waves.append(Wave(str(row + 1), wave_positions))

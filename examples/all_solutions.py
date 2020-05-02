@@ -10,4 +10,3 @@ print('The shortest solution has %d moves.' % shortest_solution.length())
 
 longest_solution = max(solutions, key=lambda solution: solution.length())
 print('The longest solution has %d moves.' % longest_solution.length())
-
