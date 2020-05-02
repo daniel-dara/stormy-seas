@@ -6,7 +6,7 @@ from abc import abstractmethod
 from collections import deque, defaultdict
 from datetime import datetime
 from enum import Enum
-from typing import List, Dict, Tuple, Union, Set, Iterable, NamedTuple
+from typing import List, Dict, Tuple, Union, Iterable, NamedTuple
 
 
 class Position(NamedTuple):
@@ -71,7 +71,6 @@ Rotation.DELTAS = {
 
 
 class Piece(NamedTuple):
-    # def __init__(self, id_: str, positions: Tuple[Position]):
     id: str
     positions: Tuple[Position]
 
@@ -98,7 +97,9 @@ class Piece(NamedTuple):
         return self.__class__(self.id, positions)
 
     def collides_with(self, piece: Piece) -> bool:
-        return len(set(self.positions).intersection(piece.positions)) > 0
+        # Optimization: Pieces of the same type can't push each other. Waves are orthogonal and will never collide.
+        # Boats can collide but there are no waves with enough room for two adjacent boats to push horizontally.
+        return type(self) != type(piece) and len(set(self.positions).intersection(piece.positions)) > 0
 
     def __str__(self) -> str:
         return '{' + str(self.id) + ': ' + ', '.join(str(position) for position in self.positions) + '}'
@@ -179,51 +180,36 @@ class State:
 
     def is_solved(self) -> bool:
         """Checks if the red boat has reached the finish position (the port)."""
-        red_boat = self._pieces[Boat.RED_BOAT_ID]
-        return red_boat.positions == Puzzle.PORT
+        return self._pieces[Boat.RED_BOAT_ID].positions == Puzzle.PORT
 
     def pieces(self) -> Iterable[Piece]:
         """Returns an iterable of all the pieces."""
         return self._pieces.values()
 
-    def copy(self) -> State:
-        pieces = {}
-
-        for piece in self._pieces.values():
-            if isinstance(piece, Boat):
-                pieces[piece.id] = Boat(piece.id, piece.positions)
-            else:
-                pieces[piece.id] = Wave(piece.id, piece.positions)
-
-        return State(pieces)
-
     def move(self, piece: Piece, direction: Direction) -> State:
         """Moves the piece in the direction and returns a new state. Handles moving multiple pieces at a time if they
         push each other.
         """
-        new_state = self.copy()
-        new_piece = new_state._pieces[piece.id]
-        new_state._move(new_piece, direction)
-        return new_state
+        return State({**self._pieces, **self._move(piece, direction)})
 
-    def _move(self, piece: Piece, direction: Direction) -> None:
+    def _move(self, piece: Piece, direction: Direction) -> Dict[str, Piece]:
         """Same as move() but modifies the current instance."""
         if direction in (Cardinal.UP, Cardinal.DOWN, Rotation.COUNTER_CLOCKWISE):
             # Optimization: There is no need to push pieces vertically since waves are not capable of vertical movement
             # and a boat pushing a boat is equivalent to moving one boat and then the other.
-            self._pieces[piece.id] = piece.move(direction)
+            return {piece.id: piece.move(direction)}
         else:
-            self._push_piece(piece, direction, set())
+            return self._push_piece(piece, direction, {})
 
-    def _push_piece(self, piece: Piece, direction: Direction, pushed_pieces: Set[Piece]) -> None:
-        self._pieces[piece.id] = piece.move(direction)
+    def _push_piece(self, piece: Piece, direction: Direction, pushed_pieces: Dict[str, Piece]) -> Dict[str, Piece]:
+        pushed_pieces[piece.id] = piece.move(direction)
 
-        for other_piece in self.pieces():
-            # Optimization: Pieces of the same type can't push each other. Waves are orthogonal and will never collide.
-            # Boats can collide but there are no waves with enough room for two adjacent boats to push horizontally.
-            if type(piece) != type(other_piece):
-                if self._pieces[piece.id].collides_with(other_piece):
+        for other_piece in {**self._pieces, **pushed_pieces}.values():
+            if piece.id != other_piece.id:
+                if pushed_pieces[piece.id].collides_with(other_piece):
                     self._push_piece(other_piece, direction, pushed_pieces)
+
+        return pushed_pieces
 
     def is_valid(self) -> bool:
         return not self._has_collision() and not self._out_of_bounds()
