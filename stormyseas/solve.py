@@ -107,12 +107,6 @@ class Piece(NamedTuple):
     def __repr__(self) -> str:
         return self.__str__()
 
-    def __eq__(self, other) -> bool:
-        return self.id == other.id
-
-    def __hash__(self) -> int:
-        return hash(self.id)
-
 
 class Boat(Piece):
     RED_BOAT_ID = 'X'
@@ -228,7 +222,7 @@ class State:
     def _all_positions(self) -> Iterable[Position]:
         return chain.from_iterable(piece.positions for piece in self.pieces())
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: State) -> bool:
         return self.__str__() == other.__str__()
 
     def __hash__(self) -> int:
