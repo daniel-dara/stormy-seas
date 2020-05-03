@@ -256,7 +256,7 @@ class Puzzle:
         queue = deque([(self._initial_state, 0)])
 
         # Map of each visited state to its previous state and the move that produced it.
-        states: Dict[State, Union[Tuple[State, Move, int], None]] = {self._initial_state: None}
+        states: Dict[State, Tuple[State, Move, int]] = {self._initial_state: None}
 
         previous_steps = 0
         previous_states_length = len(states)
@@ -314,7 +314,7 @@ class Puzzle:
 
         return solutions
 
-    def _generate_solution(self, states: Dict) -> Solution:
+    def _generate_solution(self, states: Dict[State, Tuple[State, Move, int]]) -> Solution:
         """Generates the solution (list of moves) while iterating backwards from the final state to the initial state.
         """
         moves = []
@@ -322,11 +322,6 @@ class Puzzle:
         current_state = self._current_state
 
         while current_state != self._initial_state:
-            # TODO find an elegant way to fix the typehints
-            previous_state: State
-            previous_move: Move
-            steps: int
-
             previous_state, previous_move, steps = states[current_state]
             moves.insert(0, previous_move)
             current_state = previous_state
