@@ -97,8 +97,9 @@ class Piece(NamedTuple):
         return self.__class__(self.id, positions)
 
     def collides_with(self, piece: Piece) -> bool:
-        # Optimization: Pieces of the same type can't push each other. Waves are orthogonal and will never collide.
-        # Boats can collide but there are no waves with enough room for two adjacent boats to push horizontally.
+        # Optimization: Pieces of the same type can't push each other. Waves can only move parallel to each other and
+        # will never collide. Boats can collide but there are no waves with enough room for two adjacent boats to
+        # push horizontally.
         return type(self) != type(piece) and len(set(self.positions).intersection(piece.positions)) > 0
 
     def __str__(self) -> str:
@@ -203,9 +204,8 @@ class State(NamedTuple):
         pushed_pieces.add(new_piece)
 
         for other_piece in self.pieces - old_pieces:
-            if piece.id != other_piece.id:
-                if new_piece.collides_with(other_piece):
-                    self._push_piece(other_piece, direction, pushed_pieces, old_pieces)
+            if new_piece.collides_with(other_piece):
+                self._push_piece(other_piece, direction, pushed_pieces, old_pieces)
 
         return old_pieces, pushed_pieces
 
