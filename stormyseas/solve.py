@@ -223,7 +223,7 @@ class State(NamedTuple):
         return len(positions_list) != len(set(positions_list))
 
     def _out_of_bounds(self) -> bool:
-        all_rows, all_columns = zip(*[(position.row, position.column) for position in self._all_positions()])
+        all_rows, all_columns = zip(*((position.row, position.column) for position in self._all_positions()))
         return (
             min(all_rows) < 0 or max(all_rows) >= Wave.COUNT
             or min(all_columns) < 0 or max(all_columns) >= Wave.LENGTH
