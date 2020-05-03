@@ -190,13 +190,12 @@ class State(NamedTuple):
         else:
             return self._push_piece(piece, direction, set(), set())
 
-    # TODO Try using a dictionary of self.pieces and mutating it before making frozenset
     def _push_piece(
         self,
         piece: Piece,
         direction: Direction,
-        pushed_pieces: Set[Piece],
-        old_pieces: Set[Piece]
+        old_pieces: Set[Piece],
+        pushed_pieces: Set[Piece]
     ) -> Tuple[Set[Piece], Set[Piece]]:
         old_pieces.add(piece)
         new_piece = piece.move(direction)
@@ -205,7 +204,7 @@ class State(NamedTuple):
 
         for other_piece in self.pieces - old_pieces:
             if new_piece.collides_with(other_piece):
-                self._push_piece(other_piece, direction, pushed_pieces, old_pieces)
+                self._push_piece(other_piece, direction, old_pieces, pushed_pieces)
 
         return old_pieces, pushed_pieces
 
