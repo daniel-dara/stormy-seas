@@ -178,35 +178,33 @@ class State(NamedTuple):
         """Moves the piece in the direction and returns a new state. Handles moving multiple pieces at a time if they
         push each other.
         """
-        old_pieces, new_pieces = self._move(piece, direction)
-        return State(frozenset((self.pieces - old_pieces) | new_pieces))
+        return State(self._move(piece, direction))
 
-    def _move(self, piece: Piece, direction: Direction) -> Tuple[Set[Piece], Set[Piece]]:
+    def _move(self, piece: Piece, direction: Direction) -> FrozenSet[Piece]:
         """Same as move() but modifies the current instance."""
         if direction in (Cardinal.UP, Cardinal.DOWN, Rotation.COUNTER_CLOCKWISE):
             # Optimization: There is no need to push pieces vertically since waves are not capable of vertical movement
             # and a boat pushing a boat is equivalent to moving one boat and then the other.
-            return {piece}, {piece.move(direction)}
+            return (self.pieces - {piece}) | {piece.move(direction)}
         else:
-            return self._push_piece(piece, direction, set(), set())
+            return frozenset(self._push_piece(piece, direction, set(self.pieces)))
 
     def _push_piece(
         self,
         piece: Piece,
         direction: Direction,
-        old_pieces: Set[Piece],
-        pushed_pieces: Set[Piece]
-    ) -> Tuple[Set[Piece], Set[Piece]]:
-        old_pieces.add(piece)
+        pieces: Set[Piece]
+    ) -> Set[Piece]:
         new_piece = piece.move(direction)
 
-        pushed_pieces.add(new_piece)
+        pieces.remove(piece)
+        pieces.add(new_piece)
 
-        for other_piece in self.pieces - old_pieces:
+        for other_piece in pieces:
             if new_piece.collides_with(other_piece):
-                self._push_piece(other_piece, direction, old_pieces, pushed_pieces)
+                self._push_piece(other_piece, direction, pieces)
 
-        return old_pieces, pushed_pieces
+        return pieces
 
     def is_valid(self) -> bool:
         return not self._has_collision() and not self._out_of_bounds()
