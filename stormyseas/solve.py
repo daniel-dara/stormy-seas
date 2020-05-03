@@ -102,7 +102,7 @@ class Piece(NamedTuple):
         return type(self) != type(piece) and len(set(self.positions).intersection(piece.positions)) > 0
 
     def __str__(self) -> str:
-        return '{' + str(self.id) + ': ' + ', '.join(str(position) for position in self.positions) + '}'
+        return '{' + self.id + ': ' + ', '.join(str(position) for position in self.positions) + '}'
 
     def __repr__(self) -> str:
         return self.__str__()
@@ -153,7 +153,7 @@ class Move:
 
     def __str__(self) -> str:
         # noinspection PyTypeChecker
-        return str(self._piece.id) + self._direction.value + str(self._distance)
+        return self._piece.id + self._direction.value + str(self._distance)
 
     def __repr__(self) -> str:
         return self.__str__()
@@ -239,7 +239,7 @@ class State:
         if self._str_cache is None:
             board = [[Wave.GAP] * Wave.LENGTH for _ in range(Wave.COUNT)]
 
-            for piece in self._pieces.values():
+            for piece in self.pieces():
                 for position in piece.positions:
                     board[position.row][position.column] = piece.character(position)
 
