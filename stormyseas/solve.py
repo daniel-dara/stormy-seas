@@ -6,7 +6,7 @@ from abc import abstractmethod
 from collections import deque, defaultdict
 from datetime import datetime
 from enum import Enum
-from typing import List, Dict, Tuple, Iterable, NamedTuple, FrozenSet
+from typing import List, Dict, Tuple, Iterable, NamedTuple
 
 
 class Position(NamedTuple):
@@ -138,32 +138,33 @@ class Wave(Piece):
 
 class Move:
     def __init__(self, piece: Piece, direction: Direction, distance: int = 1):
-        self._piece = piece
-        self._direction = direction
-        self._distance = distance
+        self.piece = piece
+        self.direction = direction
+        self.distance = distance
 
     def notation(self) -> str:
         # noinspection PyTypeChecker
-        return self._piece.id + self._direction.value + str(self._distance)
+        return self.piece.id + self.direction.value + str(self.distance)
 
     def __str__(self) -> str:
         # noinspection PyTypeChecker
-        return self._piece.id + self._direction.value + str(self._distance)
+        return self.piece.id + self.direction.value + str(self.distance)
 
     def __repr__(self) -> str:
         return self.__str__()
 
     def is_mergeable(self, other: Move) -> bool:
-        return self._piece.id == other._piece.id and self._direction == other._direction
+        return self.piece.id == other.piece.id and self.direction == other.direction
 
     def merge(self, other: Move) -> None:
         if not self.is_mergeable(other):
             raise ValueError('Cannot combine moves that are different.')
 
-        self._distance += other._distance
+        self.distance += other.distance
 
 
 class Solution:
+    # TODO differentiate steps/moves
     def __init__(self, moves: List[Move]):
         self._moves = moves
 
@@ -177,7 +178,7 @@ class Solution:
 
 class State(NamedTuple):
     """Stores state information about the pieces on the board and manages execution of moves."""
-    pieces: FrozenSet[Piece]
+    pieces: Tuple[Piece]
 
     def is_solved(self) -> bool:
         """Checks if the red boat has reached the finish position (the port)."""
@@ -194,26 +195,25 @@ class State(NamedTuple):
         else:
             return State(self._push(piece, direction))
 
-    def _push_without_collision(self, piece: Piece, direction: Direction) -> FrozenSet[Piece]:
+    def _push_without_collision(self, piece: Piece, direction: Direction) -> Tuple[Piece]:
         old_piece, new_piece = piece, piece.move(direction)
-        return (self.pieces - {old_piece}) | {new_piece}
+        return tuple(new_piece if piece.id == new_piece.id else piece for piece in self.pieces)
 
-    def _push(self, piece: Piece, direction: Direction) -> FrozenSet[Piece]:
-        pieces = set(self.pieces)
+    def _push(self, piece: Piece, direction: Direction) -> Tuple[Piece]:
+        pieces = list(self.pieces)
         queue = deque([piece])
 
         while queue:
             old_piece = queue.popleft()
-            new_piece = old_piece.move(direction)
 
-            pieces.remove(old_piece)
-            pieces.add(new_piece)
+            new_piece = old_piece.move(direction)
+            pieces[pieces.index(old_piece)] = new_piece
 
             for other_piece in pieces:
-                if new_piece.collides_with(other_piece):
+                if other_piece not in queue and new_piece.collides_with(other_piece):
                     queue.append(other_piece)
 
-        return frozenset(pieces)
+        return tuple(pieces)
 
     def is_valid(self) -> bool:
         return not self._has_collision() and not self._out_of_bounds()
@@ -244,6 +244,7 @@ class State(NamedTuple):
 
 class Puzzle:
     PORT = (Position(7, 5), Position(6, 5))
+    DO_MERGE_MOVES = True
 
     def __init__(self, input_: str):
         self._initial_state = self._Input(input_).parse_state()
@@ -273,9 +274,10 @@ class Puzzle:
 
         solutions: List[Solution] = []
 
-        while len(queue) > 0 and (search_type == self._SearchType.ALL or not self._current_state.is_solved()):
+        while len(queue) > 0 and (search_type == self._SearchType.ALL or len(solutions) == 0):
             self._current_state, steps = queue.popleft()
 
+            # TODO rename steps to moves
             if steps != previous_steps:
                 seconds = time() - start_time
                 step_seconds = time() - step_start
@@ -304,7 +306,16 @@ class Puzzle:
                 solutions.append(self._generate_solution(states))
                 continue
 
-            for piece in self._current_state.pieces:
+            # TODO cleanup
+            pieces = list(self._current_state.pieces)
+            previous_tuple = states[self._current_state]
+
+            if previous_tuple is not None:
+                previous_move = previous_tuple[1]
+                index = next(i for i in range(len(pieces)) if pieces[i].id == previous_move.piece.id)
+                pieces.insert(0, pieces.pop(index))
+
+            for piece in pieces:
                 for direction in piece.directions:
                     new_state = self._current_state.move(piece, direction)
 
@@ -333,7 +344,7 @@ class Puzzle:
         while current_state != self._initial_state:
             previous_state, previous_move, steps = states[current_state]
 
-            if len(moves) > 0 and moves[0].is_mergeable(previous_move):
+            if self.DO_MERGE_MOVES and len(moves) > 0 and moves[0].is_mergeable(previous_move):
                 moves[0].merge(previous_move)
             else:
                 moves.insert(0, previous_move)
@@ -342,6 +353,7 @@ class Puzzle:
 
         return Solution(moves)
 
+    # TODO Remove
     class _SearchType(Enum):
         SHORTEST = 0
         ALL = 1
@@ -374,4 +386,4 @@ class Puzzle:
             for id_, positions in boat_positions.items():
                 pieces[id_] = Boat(id_, tuple(positions))
 
-            return State(frozenset(pieces.values()))
+            return State(tuple(pieces.values()))
