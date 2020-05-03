@@ -6,7 +6,7 @@ from abc import abstractmethod
 from collections import deque, defaultdict
 from datetime import datetime
 from enum import Enum
-from typing import List, Dict, Tuple, Union, Iterable, NamedTuple
+from typing import List, Dict, Tuple, Union, Iterable, NamedTuple, FrozenSet
 
 
 class Position(NamedTuple):
@@ -97,8 +97,9 @@ class Piece(NamedTuple):
         return self.__class__(self.id, positions)
 
     def collides_with(self, piece: Piece) -> bool:
-        # Optimization: Pieces of the same type can't push each other. Waves are orthogonal and will never collide.
-        # Boats can collide but there are no waves with enough room for two adjacent boats to push horizontally.
+        # Optimization: Pieces of the same type can't push each other. Waves can only move parallel to each other and
+        # will never collide. Boats can collide but there are no waves with enough room for two adjacent boats to
+        # push horizontally.
         return type(self) != type(piece) and len(set(self.positions).intersection(piece.positions)) > 0
 
     def __str__(self) -> str:
@@ -165,45 +166,45 @@ class Solution:
         return len(self._moves)
 
 
-class State:
+class State(NamedTuple):
     """Stores state information about the pieces on the board and manages execution of moves."""
-
-    def __init__(self, pieces: Dict[str, Piece]):
-        self._pieces = pieces
-        self._str_cache = None
+    pieces: FrozenSet[Piece]
 
     def is_solved(self) -> bool:
         """Checks if the red boat has reached the finish position (the port)."""
-        return self._pieces[Boat.RED_BOAT_ID].positions == Puzzle.PORT
-
-    def pieces(self) -> Iterable[Piece]:
-        """Returns an iterable of all the pieces."""
-        return self._pieces.values()
+        return next(piece for piece in self.pieces if piece.id == Boat.RED_BOAT_ID).positions == Puzzle.PORT
 
     def move(self, piece: Piece, direction: Direction) -> State:
         """Moves the piece in the direction and returns a new state. Handles moving multiple pieces at a time if they
         push each other.
         """
-        return State({**self._pieces, **self._move(piece, direction)})
-
-    def _move(self, piece: Piece, direction: Direction) -> Dict[str, Piece]:
-        """Same as move() but modifies the current instance."""
         if direction in (Cardinal.UP, Cardinal.DOWN, Rotation.COUNTER_CLOCKWISE):
             # Optimization: There is no need to push pieces vertically since waves are not capable of vertical movement
             # and a boat pushing a boat is equivalent to moving one boat and then the other.
-            return {piece.id: piece.move(direction)}
+            return State(self._push_without_collision(piece, direction))
         else:
-            return self._push_piece(piece, direction, {})
+            return State(self._push(piece, direction))
 
-    def _push_piece(self, piece: Piece, direction: Direction, pushed_pieces: Dict[str, Piece]) -> Dict[str, Piece]:
-        pushed_pieces[piece.id] = piece.move(direction)
+    def _push_without_collision(self, piece: Piece, direction: Direction) -> FrozenSet[Piece]:
+        old_piece, new_piece = piece, piece.move(direction)
+        return (self.pieces - {old_piece}) | {new_piece}
 
-        for other_piece in {**self._pieces, **pushed_pieces}.values():
-            if piece.id != other_piece.id:
-                if pushed_pieces[piece.id].collides_with(other_piece):
-                    self._push_piece(other_piece, direction, pushed_pieces)
+    def _push(self, piece: Piece, direction: Direction) -> FrozenSet[Piece]:
+        pieces = set(self.pieces)
+        queue = deque([piece])
 
-        return pushed_pieces
+        while queue:
+            old_piece = queue.popleft()
+            new_piece = old_piece.move(direction)
+
+            pieces.remove(old_piece)
+            pieces.add(new_piece)
+
+            for other_piece in pieces:
+                if new_piece.collides_with(other_piece):
+                    queue.append(other_piece)
+
+        return frozenset(pieces)
 
     def is_valid(self) -> bool:
         return not self._has_collision() and not self._out_of_bounds()
@@ -220,26 +221,16 @@ class State:
         )
 
     def _all_positions(self) -> Iterable[Position]:
-        return chain.from_iterable(piece.positions for piece in self.pieces())
-
-    def __eq__(self, other: State) -> bool:
-        return self.__str__() == other.__str__()
-
-    def __hash__(self) -> int:
-        return hash(self.__str__())
+        return chain.from_iterable(piece.positions for piece in self.pieces)
 
     def __str__(self) -> str:
-        # TODO Cleanup caching, perhaps make State immutable and put move/push in a new or existing class.
-        if self._str_cache is None:
-            board = [[Wave.GAP] * Wave.LENGTH for _ in range(Wave.COUNT)]
+        board = [[Wave.GAP] * Wave.LENGTH for _ in range(Wave.COUNT)]
 
-            for piece in self.pieces():
-                for position in piece.positions:
-                    board[position.row][position.column] = piece.character(position)
+        for piece in self.pieces:
+            for position in piece.positions:
+                board[position.row][position.column] = piece.character(position)
 
-            self._str_cache = '\n'.join(''.join(row) for row in board)
-
-        return self._str_cache
+        return '\n'.join(''.join(row) for row in board)
 
 
 class Puzzle:
@@ -304,7 +295,7 @@ class Puzzle:
                 solutions.append(self._generate_solution(states))
                 continue
 
-            for piece in self._current_state.pieces():
+            for piece in self._current_state.pieces:
                 for direction in piece.directions:
                     new_state = self._current_state.move(piece, direction)
 
@@ -374,4 +365,4 @@ class Puzzle:
             for id_, positions in boat_positions.items():
                 pieces[id_] = Boat(id_, tuple(positions))
 
-            return State(pieces)
+            return State(frozenset(pieces.values()))
