@@ -6,7 +6,7 @@ from abc import abstractmethod
 from collections import deque, defaultdict
 from datetime import datetime
 from enum import Enum
-from typing import List, Dict, Tuple, Union, Iterable, NamedTuple, Set, FrozenSet
+from typing import List, Dict, Tuple, Union, Iterable, NamedTuple, FrozenSet
 
 
 class Position(NamedTuple):
@@ -178,33 +178,33 @@ class State(NamedTuple):
         """Moves the piece in the direction and returns a new state. Handles moving multiple pieces at a time if they
         push each other.
         """
-        return State(self._move(piece, direction))
-
-    def _move(self, piece: Piece, direction: Direction) -> FrozenSet[Piece]:
-        """Same as move() but modifies the current instance."""
         if direction in (Cardinal.UP, Cardinal.DOWN, Rotation.COUNTER_CLOCKWISE):
             # Optimization: There is no need to push pieces vertically since waves are not capable of vertical movement
             # and a boat pushing a boat is equivalent to moving one boat and then the other.
-            return (self.pieces - {piece}) | {piece.move(direction)}
+            return State(self._push_without_collision(piece, direction))
         else:
-            return frozenset(self._push_piece(piece, direction, set(self.pieces)))
+            return State(self._push(piece, direction))
 
-    def _push_piece(
-        self,
-        piece: Piece,
-        direction: Direction,
-        pieces: Set[Piece]
-    ) -> Set[Piece]:
-        new_piece = piece.move(direction)
+    def _push_without_collision(self, piece: Piece, direction: Direction) -> FrozenSet[Piece]:
+        old_piece, new_piece = piece, piece.move(direction)
+        return (self.pieces - {old_piece}) | {new_piece}
 
-        pieces.remove(piece)
-        pieces.add(new_piece)
+    def _push(self, piece: Piece, direction: Direction) -> FrozenSet[Piece]:
+        pieces = set(self.pieces)
+        queue = deque([piece])
 
-        for other_piece in pieces:
-            if new_piece.collides_with(other_piece):
-                self._push_piece(other_piece, direction, pieces)
+        while queue:
+            old_piece = queue.popleft()
+            new_piece = old_piece.move(direction)
 
-        return pieces
+            pieces.remove(old_piece)
+            pieces.add(new_piece)
+
+            for other_piece in pieces:
+                if new_piece.collides_with(other_piece):
+                    queue.append(other_piece)
+
+        return frozenset(pieces)
 
     def is_valid(self) -> bool:
         return not self._has_collision() and not self._out_of_bounds()
