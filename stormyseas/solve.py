@@ -372,6 +372,6 @@ class Puzzle:
                 pieces[str(row + 1)] = Wave(str(row + 1), tuple(wave_positions))
 
             for id_, positions in boat_positions.items():
-                pieces[id_] = Boat(id_, positions)
+                pieces[id_] = Boat(id_, tuple(positions))
 
             return State(pieces)
