@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import collections
 from itertools import chain
 from time import time
 from abc import abstractmethod
@@ -165,26 +166,28 @@ class Solution:
         return len(self._moves)
 
 
-class State:
+# noinspection PyPep8Naming
+hashabledict = Tuple[Piece]
+
+
+class State(NamedTuple):
     """Stores state information about the pieces on the board and manages execution of moves."""
 
-    def __init__(self, pieces: Dict[str, Piece]):
-        self._pieces = pieces
-        self._str_cache = None
+    pieces: hashabledict
 
     def is_solved(self) -> bool:
         """Checks if the red boat has reached the finish position (the port)."""
-        return self._pieces[Boat.RED_BOAT_ID].positions == Puzzle.PORT
-
-    def pieces(self) -> Iterable[Piece]:
-        """Returns an iterable of all the pieces."""
-        return self._pieces.values()
+        return getattr(self.pieces, Boat.RED_BOAT_ID).positions == Puzzle.PORT
 
     def move(self, piece: Piece, direction: Direction) -> State:
         """Moves the piece in the direction and returns a new state. Handles moving multiple pieces at a time if they
         push each other.
         """
-        return State({**self._pieces, **self._move(piece, direction)})
+        pushed_pieces = self._move(piece, direction)
+        new_pieces = tuple(pushed_pieces[piece.id] if piece.id in pushed_pieces else piece for piece in self.pieces)
+        return State(
+            hashabledict(*new_pieces)
+        )
 
     def _move(self, piece: Piece, direction: Direction) -> Dict[str, Piece]:
         """Same as move() but modifies the current instance."""
@@ -198,7 +201,7 @@ class State:
     def _push_piece(self, piece: Piece, direction: Direction, pushed_pieces: Dict[str, Piece]) -> Dict[str, Piece]:
         pushed_pieces[piece.id] = piece.move(direction)
 
-        for other_piece in {**self._pieces, **pushed_pieces}.values():
+        for other_piece in (pushed_pieces[piece.id] if piece.id in pushed_pieces else piece for piece in self.pieces):
             if piece.id != other_piece.id:
                 if pushed_pieces[piece.id].collides_with(other_piece):
                     self._push_piece(other_piece, direction, pushed_pieces)
@@ -220,26 +223,22 @@ class State:
         )
 
     def _all_positions(self) -> Iterable[Position]:
-        return chain.from_iterable(piece.positions for piece in self.pieces())
+        return chain.from_iterable(piece.positions for piece in self.pieces)
 
-    def __eq__(self, other: State) -> bool:
-        return self.__str__() == other.__str__()
-
-    def __hash__(self) -> int:
-        return hash(self.__str__())
+    # def __eq__(self, other: State) -> bool:
+    #     return self.__str__() == other.__str__()
+    #
+    # def __hash__(self) -> int:
+    #     return hash(self.__str__())
 
     def __str__(self) -> str:
-        # TODO Cleanup caching, perhaps make State immutable and put move/push in a new or existing class.
-        if self._str_cache is None:
-            board = [[Wave.GAP] * Wave.LENGTH for _ in range(Wave.COUNT)]
+        board = [[Wave.GAP] * Wave.LENGTH for _ in range(Wave.COUNT)]
 
-            for piece in self.pieces():
-                for position in piece.positions:
-                    board[position.row][position.column] = piece.character(position)
+        for piece in self.pieces:
+            for position in piece.positions:
+                board[position.row][position.column] = piece.character(position)
 
-            self._str_cache = '\n'.join(''.join(row) for row in board)
-
-        return self._str_cache
+        return '\n'.join(''.join(row) for row in board)
 
 
 class Puzzle:
@@ -304,7 +303,7 @@ class Puzzle:
                 solutions.append(self._generate_solution(states))
                 continue
 
-            for piece in self._current_state.pieces():
+            for piece in self._current_state.pieces:
                 for direction in piece.directions:
                     new_state = self._current_state.move(piece, direction)
 
@@ -369,9 +368,13 @@ class Puzzle:
                             boat_positions[character.upper()].append(Position(row, column))
 
                 # Constraint: Rows are 1-based in solution notation.
-                pieces[str(row + 1)] = Wave(str(row + 1), tuple(wave_positions))
+                pieces['w' + str(row + 1)] = Wave(str(row + 1), tuple(wave_positions))
 
             for id_, positions in boat_positions.items():
                 pieces[id_] = Boat(id_, tuple(positions))
 
-            return State(pieces)
+            global hashabledict
+            hashabledict = collections.namedtuple('hashabledict', ' '.join(pieces.keys()))
+
+            # noinspection PyArgumentList
+            return State(hashabledict(*(piece for piece in pieces.values())))
