@@ -6,7 +6,7 @@ from abc import abstractmethod
 from collections import deque, defaultdict
 from datetime import datetime
 from enum import Enum
-from typing import List, Dict, Tuple, Union, Iterable, NamedTuple, FrozenSet
+from typing import List, Dict, Tuple, Iterable, NamedTuple, FrozenSet
 
 
 class Position(NamedTuple):
