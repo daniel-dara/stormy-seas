@@ -153,6 +153,15 @@ class Move:
     def __repr__(self) -> str:
         return self.__str__()
 
+    def is_mergeable(self, other: Move) -> bool:
+        return self._piece.id == other._piece.id and self._direction == other._direction
+
+    def merge(self, other: Move) -> None:
+        if not self.is_mergeable(other):
+            raise ValueError('Cannot combine moves that are different.')
+
+        self._distance += other._distance
+
 
 class Solution:
     def __init__(self, moves: List[Move]):
@@ -323,7 +332,12 @@ class Puzzle:
 
         while current_state != self._initial_state:
             previous_state, previous_move, steps = states[current_state]
-            moves.insert(0, previous_move)
+
+            if len(moves) > 0 and moves[0].is_mergeable(previous_move):
+                moves[0].merge(previous_move)
+            else:
+                moves.insert(0, previous_move)
+
             current_state = previous_state
 
         return Solution(moves)
