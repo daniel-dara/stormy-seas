@@ -250,13 +250,7 @@ class Puzzle:
         self._initial_state = self._Input(input_).parse_state()
         self._current_state = self._initial_state
 
-    def shortest_solution(self) -> Solution:
-        return self._solve(self._SearchType.SHORTEST)[0]
-
-    def all_solutions(self) -> List[Solution]:
-        return self._solve(self._SearchType.ALL)
-
-    def _solve(self, search_type: _SearchType) -> List[Solution]:
+    def solve(self) -> Solution:
         """Finds the shortest set of moves to solve the puzzle using a breadth-first search of all possible states."""
         start_time = time()
         step_start = time()
@@ -272,9 +266,7 @@ class Puzzle:
         previous_states_length = len(states)
         previous_queue_length = len(queue)
 
-        solutions: List[Solution] = []
-
-        while len(queue) > 0 and (search_type == self._SearchType.ALL or len(solutions) == 0):
+        while len(queue) > 0 and not self._current_state.is_solved():
             self._current_state, steps = queue.popleft()
 
             # TODO rename steps to moves
@@ -303,7 +295,6 @@ class Puzzle:
                 previous_queue_length = len(queue)
 
             if self._current_state.is_solved():
-                solutions.append(self._generate_solution(states))
                 continue
 
             # TODO cleanup
@@ -323,16 +314,17 @@ class Puzzle:
                         queue.append((new_state, steps + 1))
                         states[new_state] = (self._current_state, Move(piece, direction), steps + 1)
 
+        solution = self._generate_solution(states)
         seconds = time() - start_time
         print('Completed! Finished solving at: %s' % datetime.fromtimestamp(time()).strftime('%X'))
-        print('Total Solutions: %d' % len(solutions))
         print('Total Time Elapsed: %dm %ds' % (seconds // 60, seconds % 60))
         print('Scanned %s states with %s left in the queue.' % ("{:,}".format(len(states)), "{:,}".format(len(queue))))
+        print('Solution: ', solution)
 
-        if search_type == self._SearchType.SHORTEST and not self._current_state.is_solved():
+        if not self._current_state.is_solved():
             raise Exception('Puzzle has no solution.')
 
-        return solutions
+        return solution
 
     def _generate_solution(self, states: Dict[State, Tuple[State, Move, int]]) -> Solution:
         """Generates the solution (list of moves) while iterating backwards from the final state to the initial state.
@@ -352,11 +344,6 @@ class Puzzle:
             current_state = previous_state
 
         return Solution(moves)
-
-    # TODO Remove
-    class _SearchType(Enum):
-        SHORTEST = 0
-        ALL = 1
 
     class _Input:
         def __init__(self, input_: str):
