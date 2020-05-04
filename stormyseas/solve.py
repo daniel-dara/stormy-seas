@@ -137,24 +137,24 @@ class Wave(Piece):
 
 
 class Move:
-    def __init__(self, piece: Piece, direction: Direction, distance: int = 1):
-        self.piece = piece
+    def __init__(self, piece_id: str, direction: Direction, distance: int = 1):
+        self.piece_id = piece_id
         self.direction = direction
         self.distance = distance
 
     def notation(self) -> str:
         # noinspection PyTypeChecker
-        return self.piece.id + self.direction.value + str(self.distance)
+        return self.piece_id + self.direction.value + str(self.distance)
 
     def __str__(self) -> str:
         # noinspection PyTypeChecker
-        return self.piece.id + self.direction.value + str(self.distance)
+        return self.piece_id + self.direction.value + str(self.distance)
 
     def __repr__(self) -> str:
         return self.__str__()
 
     def is_mergeable(self, other: Move) -> bool:
-        return self.piece.id == other.piece.id and self.direction == other.direction
+        return self.piece_id == other.piece_id and self.direction == other.direction
 
     def merge(self, other: Move) -> None:
         if not self.is_mergeable(other):
@@ -277,7 +277,7 @@ class Puzzle:
 
                     if new_state.is_valid() and new_state not in self._states:
                         self._queue.append((new_state, self._move_count + 1))
-                        self._states[new_state] = (self._current_state, Move(piece, direction), self._move_count + 1)
+                        self._states[new_state] = (self._current_state, Move(piece.id, direction), self._move_count + 1)
 
                         if new_state.is_solved():
                             return new_state
@@ -291,7 +291,7 @@ class Puzzle:
 
         if previous_tuple is not None:
             previous_move = previous_tuple[1]
-            index = next(i for i in range(len(pieces)) if pieces[i].id == previous_move.piece.id)
+            index = next(i for i in range(len(pieces)) if pieces[i].id == previous_move.piece_id)
             pieces.insert(0, pieces.pop(index))
 
         return pieces
@@ -299,7 +299,8 @@ class Puzzle:
     def _generate_solution(self, final_state: State) -> Solution:
         """Generates the solution (list of moves) while iterating backwards from the final state to the initial state.
         """
-        moves = [Move(Piece('X', ()), Cardinal.DOWN, 2)]
+        # Every solution will need a final step of XD2 since our Puzzle.PORT position is adjusted to be in bounds.
+        moves = [Move(Boat.RED_BOAT_ID, Cardinal.DOWN, 2)]
         current_state = final_state
 
         while current_state != self._initial_state:
