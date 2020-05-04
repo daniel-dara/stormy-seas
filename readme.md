@@ -5,11 +5,11 @@ This package provides a `Puzzle` class which takes in a string representation of
 
 ## Puzzle examples
 * [Problem 1](https://user-images.githubusercontent.com/1920621/80294652-ca4a3280-8738-11ea-9fda-6aa1ea3460f6.jpg)
-  * 30 moves / 15 steps
+  * 15 steps, 30 moves
 * [Problem 2](https://user-images.githubusercontent.com/1920621/80294654-cc13f600-8738-11ea-9160-b67fae22b393.jpg)
-  * 19 moves / 8 steps
+  * 8 steps, 19 moves
 * [Problem 3](https://user-images.githubusercontent.com/1920621/80294655-ccac8c80-8738-11ea-80eb-d5895066de72.jpg)
-  * 53 moves / 30 steps
+  * 30 steps, 53 moves
 
 ## TODO
 * Organize classes into files

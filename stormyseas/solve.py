@@ -142,10 +142,6 @@ class Move:
         self.direction = direction
         self.distance = distance
 
-    def notation(self) -> str:
-        # noinspection PyTypeChecker
-        return self.piece_id + self.direction.value + str(self.distance)
-
     def __str__(self) -> str:
         # noinspection PyTypeChecker
         return self.piece_id + self.direction.value + str(self.distance)
@@ -164,16 +160,19 @@ class Move:
 
 
 class Solution:
-    # TODO differentiate steps/moves
     def __init__(self, moves: List[Move]):
         self._moves = moves
 
     def __str__(self) -> str:
-        """Return a string representation of the solution's moves using Solution Notation."""
-        return ', '.join(move.notation() for move in self._moves)
+        return ', '.join(str(move) for move in self._moves)
 
-    def length(self) -> int:
+    def step_count(self) -> int:
+        """A step is a move of any distance."""
         return len(self._moves)
+
+    def move_count(self) -> int:
+        """A move is the act of moving a piece in a direction by one space."""
+        return sum(move.distance for move in self._moves)
 
 
 class State(NamedTuple):
@@ -249,7 +248,7 @@ class Puzzle:
     def __init__(self, input_: str, enable_logging: bool = False):
         self._enable_logging = enable_logging
 
-        self._initial_state = self._Input(input_).parse_state()
+        self._initial_state = self._Input(input_).parse()
         self._current_state = self._initial_state
 
         self._queue = deque([(self._initial_state, 0)])
@@ -320,7 +319,7 @@ class Puzzle:
         def __init__(self, input_: str):
             self.input = input_
 
-        def parse_state(self) -> State:
+        def parse(self) -> State:
             boat_positions: Dict[str, List[Position]] = defaultdict(lambda: [])
             pieces: Dict[str, Piece] = {}
 
