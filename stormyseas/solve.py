@@ -168,7 +168,7 @@ class Solution:
     def __init__(self, moves: List[Move]):
         self._moves = moves
 
-    def notation(self) -> str:
+    def __str__(self) -> str:
         """Return a string representation of the solution's moves using Solution Notation."""
         return ', '.join(move.notation() for move in self._moves)
 
@@ -319,7 +319,6 @@ class Puzzle:
         print('Completed! Finished solving at: %s' % datetime.fromtimestamp(time()).strftime('%X'))
         print('Total Time Elapsed: %dm %ds' % (seconds // 60, seconds % 60))
         print('Scanned %s states with %s left in the queue.' % ("{:,}".format(len(states)), "{:,}".format(len(queue))))
-        print('Solution: ', solution)
 
         if not self._current_state.is_solved():
             raise Exception('Puzzle has no solution.')
