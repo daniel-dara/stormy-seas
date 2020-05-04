@@ -297,7 +297,8 @@ class Puzzle:
         return pieces
 
     def _generate_solution(self, final_state: State) -> Solution:
-        """Generates the solution (list of moves) while iterating backwards from the final state to the initial state.
+        """Generates a Solution (list of moves) by iterating from the final state to the initial state using the state
+        map generated during solve().
         """
         # Every solution will need a final step of XD2 since our Puzzle.PORT position is adjusted to be in bounds.
         moves = [Move(Boat.RED_BOAT_ID, Cardinal.DOWN, 2)]
