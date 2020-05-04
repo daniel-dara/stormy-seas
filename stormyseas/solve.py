@@ -9,15 +9,20 @@ from enum import Enum, EnumMeta
 from typing import List, Dict, Tuple, Iterable, NamedTuple, Union, NamedTupleMeta
 
 
+class Delta(NamedTuple):
+    row: int
+    column: int
+
+
 class Position(NamedTuple):
     row: int
     column: int
 
-    def __add__(self, other: Position) -> Position:
+    def __add__(self, other: Delta) -> Position:
         return Position(self.row + other.row, self.column + other.column)
 
-    def __sub__(self, other: Position) -> Position:
-        return Position(self.row - other.row, self.column - other.column)
+    def __sub__(self, other: Position) -> Delta:
+        return Delta(self.row - other.row, self.column - other.column)
 
 
 class DirectionMeta(ABCMeta, EnumMeta):
@@ -38,15 +43,15 @@ class Cardinal(Direction):
     RIGHT = 'R'
 
     def transform(self, positions: Tuple[Position]) -> Tuple[Position]:
-        self.DELTAS: Dict[Cardinal, Position]  # Defined after class definition.
+        self.DELTAS: Dict[Cardinal, Delta]  # Defined after class definition.
         return tuple(position + self.DELTAS[self] for position in positions)
 
 
 Cardinal.DELTAS = {
-    Cardinal.LEFT: Position(0, -1),
-    Cardinal.RIGHT: Position(0, 1),
-    Cardinal.UP: Position(-1, 0),
-    Cardinal.DOWN: Position(1, 0),
+    Cardinal.LEFT: Delta(0, -1),
+    Cardinal.RIGHT: Delta(0, 1),
+    Cardinal.UP: Delta(-1, 0),
+    Cardinal.DOWN: Delta(1, 0),
 }
 
 
@@ -55,7 +60,7 @@ class Rotation(Direction):
     COUNTER_CLOCKWISE = 0
 
     def transform(self, positions: Tuple[Position]) -> Tuple[Position, Position]:
-        self.DELTAS: Dict[Rotation, Position]  # Defined after class definition.
+        self.DELTAS: Dict[Rotation, Delta]  # Defined after class definition.
 
         if len(positions) != 2:
             raise ValueError('Only two length pieces should be rotated. '
@@ -68,10 +73,10 @@ class Rotation(Direction):
 
 
 Rotation.DELTAS = {
-    Position(1, 0): Position(-1, 1),
-    Position(0, 1): Position(-1, -1),
-    Position(-1, 0): Position(1, -1),
-    Position(0, -1): Position(1, 1),
+    Delta(1, 0): Delta(-1, 1),
+    Delta(0, 1): Delta(-1, -1),
+    Delta(-1, 0): Delta(1, -1),
+    Delta(0, -1): Delta(1, 1),
 }
 
 
