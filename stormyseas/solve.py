@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from itertools import chain
 from time import time
-from abc import abstractmethod, ABCMeta
+from abc import abstractmethod
 from collections import deque, defaultdict
 from datetime import datetime
-from enum import Enum, EnumMeta
-from typing import List, Dict, Tuple, Iterable, NamedTuple, Union, NamedTupleMeta
+from enum import Enum
+from typing import List, Dict, Tuple, Iterable, NamedTuple, Union
 
 
 class Delta(NamedTuple):
@@ -25,15 +25,10 @@ class Position(NamedTuple):
         return Delta(self.row - other.row, self.column - other.column)
 
 
-class DirectionMeta(ABCMeta, EnumMeta):
-    """Resolves metaclass conflict so Direction can be an abstract class."""
-    pass
-
-
-class Direction(Enum, metaclass=DirectionMeta):
+class Direction(Enum):
     @abstractmethod
     def transform(self, positions: Tuple[Position]) -> Tuple[Position]:
-        pass
+        raise NotImplementedError()
 
 
 class Cardinal(Direction):
@@ -80,12 +75,7 @@ Rotation.DELTAS = {
 }
 
 
-class PieceMeta(ABCMeta, NamedTupleMeta):
-    """Resolves metaclass conflict so Piece can be an abstract class."""
-    pass
-
-
-class Piece(NamedTuple, metaclass=PieceMeta):
+class Piece(NamedTuple):
     id: str
     positions: Tuple[Position]
 
@@ -93,11 +83,11 @@ class Piece(NamedTuple, metaclass=PieceMeta):
     @abstractmethod
     def directions(self) -> Tuple[Direction, ...]:
         """Return a list of the directions that this piece is allowed to move in. (regardless of board state)"""
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def character(self, position: Position) -> str:
-        pass
+        raise NotImplementedError()
 
     def move(self, direction: Direction) -> Piece:
         if isinstance(direction, Rotation):
