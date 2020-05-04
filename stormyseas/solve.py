@@ -251,7 +251,6 @@ class Puzzle:
 
         self._initial_state = self._Input(input_).parse_state()
         self._current_state = self._initial_state
-        self._solution = None
 
         self._queue = deque([(self._initial_state, 0)])
         # Map of each visited state to its previous state and the move that produced it.
@@ -261,33 +260,29 @@ class Puzzle:
     def solve(self) -> Solution:
         """Finds the shortest set of moves to solve the puzzle using a breadth-first search of all possible states."""
         logger = self._Logger(self)
+        solved_state = self._find_solved_state(logger)
+        logger.print_complete()
 
-        while len(self._queue) > 0 and self._solution is None:
+        return self._generate_solution(solved_state)
+
+    def _find_solved_state(self, logger: _Logger) -> State:
+        while len(self._queue) > 0:
             self._current_state, self._move_count = self._queue.popleft()
 
             logger.print_status()
 
-            self._visit_new_states()
+            for piece in self._ordered_pieces(self._states[self._current_state]):
+                for direction in piece.directions:
+                    new_state = self._current_state.move(piece, direction)
 
-        logger.print_complete()
+                    if new_state.is_valid() and new_state not in self._states:
+                        self._queue.append((new_state, self._move_count + 1))
+                        self._states[new_state] = (self._current_state, Move(piece, direction), self._move_count + 1)
 
-        if self._solution is None:
-            raise Exception('Puzzle has no solution.')
+                        if new_state.is_solved():
+                            return new_state
 
-        return self._generate_solution(self._states)
-
-    def _visit_new_states(self) -> None:
-        for piece in self._ordered_pieces(self._states[self._current_state]):
-            for direction in piece.directions:
-                new_state = self._current_state.move(piece, direction)
-
-                if new_state.is_valid() and new_state not in self._states:
-                    if new_state.is_solved():
-                        self._solution = new_state
-                        return
-
-                    self._queue.append((new_state, self._move_count + 1))
-                    self._states[new_state] = (self._current_state, Move(piece, direction), self._move_count + 1)
+        raise Exception('Puzzle has no solution.')
 
     def _ordered_pieces(self, previous_tuple: Tuple[State, Move, int]) -> List[Piece]:
         """Reorders the pieces so that the piece most recently moved is at the front of the list. This optimizes the
@@ -301,15 +296,14 @@ class Puzzle:
 
         return pieces
 
-    def _generate_solution(self, states: Dict[State, Tuple[State, Move, int]]) -> Solution:
+    def _generate_solution(self, final_state: State) -> Solution:
         """Generates the solution (list of moves) while iterating backwards from the final state to the initial state.
         """
-        moves = []
-
-        current_state = self._current_state
+        moves = [Move(Piece('X', ()), Cardinal.DOWN, 2)]
+        current_state = final_state
 
         while current_state != self._initial_state:
-            previous_state, previous_move, steps = states[current_state]
+            previous_state, previous_move, steps = self._states[current_state]
 
             if self.DO_MERGE_MOVES and len(moves) > 0 and moves[0].is_mergeable(previous_move):
                 moves[0].merge(previous_move)
