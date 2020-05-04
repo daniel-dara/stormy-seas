@@ -331,7 +331,7 @@ class Puzzle:
             for row, line in enumerate(self.input.strip().split('\n')):
                 wave_positions = []
 
-                character: str  # Fixes Pycharm Type Inference bug
+                character: str  # Work around: Pycharm type inference bug (PY-42194)
                 for column, character in enumerate(line.strip()):
                     if character == Wave.BLOCK:
                         wave_positions.append(Position(row, column))
