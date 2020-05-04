@@ -13,7 +13,10 @@ class Position(NamedTuple):
     row: int
     column: int
 
-    def __sub__(self, other: Position):
+    def __add__(self, other: Position) -> Position:
+        return Position(self.row + other.row, self.column + other.column)
+
+    def __sub__(self, other: Position) -> Position:
         return Position(self.row - other.row, self.column - other.column)
 
 
@@ -35,13 +38,8 @@ class Cardinal(Direction):
     RIGHT = 'R'
 
     def transform(self, positions: Tuple[Position]) -> Tuple[Position]:
-        return tuple(
-            Position(
-                position.row + self.DELTAS[self].row,
-                position.column + self.DELTAS[self].column
-            )
-            for position in positions
-        )
+        self.DELTAS: Dict[Cardinal, Position]  # Defined after class definition.
+        return tuple(position + self.DELTAS[self] for position in positions)
 
 
 Cardinal.DELTAS = {
@@ -57,12 +55,14 @@ class Rotation(Direction):
     COUNTER_CLOCKWISE = 0
 
     def transform(self, positions: Tuple[Position]) -> Tuple[Position, Position]:
+        self.DELTAS: Dict[Rotation, Position]  # Defined after class definition.
+
         if len(positions) != 2:
             raise ValueError('Only two length pieces should be rotated. '
                              + 'Attempted to rotate piece of length %d.' % len(positions))
 
         front = positions[0]
-        tail = self.DELTAS[positions[1] - positions[0]]
+        tail = positions[1] + self.DELTAS[positions[1] - positions[0]]
 
         return front, tail
 
