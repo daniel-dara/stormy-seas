@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from itertools import chain
 from time import time
-from abc import abstractmethod
+from abc import abstractmethod, ABC, ABCMeta
 from collections import deque, defaultdict
 from datetime import datetime
-from enum import Enum
-from typing import List, Dict, Tuple, Iterable, NamedTuple, Union
+from enum import Enum, EnumMeta
+from typing import List, Dict, Tuple, Iterable, NamedTuple, Union, NamedTupleMeta
 
 
 class Position(NamedTuple):
@@ -17,7 +17,12 @@ class Position(NamedTuple):
         return Position(self.row - other.row, self.column - other.column)
 
 
-class Direction(Enum):
+class DirectionMeta(ABCMeta, EnumMeta):
+    """Resolves metaclass conflict so Direction can be an abstract class."""
+    pass
+
+
+class Direction(Enum, metaclass=DirectionMeta):
     @abstractmethod
     def transform(self, positions: Tuple[Position]) -> Tuple[Position]:
         pass
@@ -70,7 +75,12 @@ Rotation.DELTAS = {
 }
 
 
-class Piece(NamedTuple):
+class PieceMeta(ABCMeta, NamedTupleMeta):
+    """Resolves metaclass conflict so Piece can be an abstract class."""
+    pass
+
+
+class Piece(NamedTuple, metaclass=PieceMeta):
     id: str
     positions: Tuple[Position]
 
