@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from itertools import chain
 from time import time
-from abc import abstractmethod, ABC, ABCMeta
+from abc import abstractmethod, ABCMeta
 from collections import deque, defaultdict
 from datetime import datetime
 from enum import Enum, EnumMeta
