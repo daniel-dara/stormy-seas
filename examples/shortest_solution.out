@@ -1,5 +1,6 @@
-Started solving at: 21:26:20
-moves=1   states=9     +9     queue=7     +7     time=0m 0s   +0m 0s
+Started solving at: 22:13:30
+moves=0   states=1     +1     queue=1     +1     time=0m 0s   +0m 0s
+moves=1   states=9     +8     queue=7     +6     time=0m 0s   +0m 0s
 moves=2   states=44    +35    queue=34    +27    time=0m 0s   +0m 0s
 moves=3   states=151   +107   queue=106   +72    time=0m 0s   +0m 0s
 moves=4   states=405   +254   queue=253   +147   time=0m 0s   +0m 0s
@@ -8,16 +9,15 @@ moves=6   states=1763  +858   queue=857   +358   time=0m 1s   +0m 0s
 moves=7   states=3103  +1340  queue=1339  +482   time=0m 1s   +0m 0s
 moves=8   states=5080  +1977  queue=1976  +637   time=0m 2s   +0m 0s
 moves=9   states=7924  +2844  queue=2843  +867   time=0m 4s   +0m 1s
-moves=10  states=11976 +4052  queue=4051  +1208  time=0m 6s   +0m 1s
-moves=11  states=17613 +5637  queue=5636  +1585  time=0m 8s   +0m 2s
-moves=12  states=24944 +7331  queue=7330  +1694  time=0m 12s  +0m 3s
+moves=10  states=11976 +4052  queue=4051  +1208  time=0m 6s   +0m 2s
+moves=11  states=17613 +5637  queue=5636  +1585  time=0m 9s   +0m 2s
+moves=12  states=24944 +7331  queue=7330  +1694  time=0m 13s  +0m 3s
 moves=13  states=33360 +8416  queue=8415  +1085  time=0m 17s  +0m 4s
 moves=14  states=41506 +8146  queue=8145  -270   time=0m 23s  +0m 5s
 moves=15  states=47967 +6461  queue=6460  -1685  time=0m 28s  +0m 5s
-moves=16  states=52106 +4139  queue=4138  -2322  time=0m 32s  +0m 4s
-moves=17  states=54349 +2243  queue=2242  -1896  time=0m 35s  +0m 2s
-Completed! Finished at: 21:26:57
-Total Time Elapsed: 0m 36s
-Scanned 55,553 states with 1,262 left in the queue.
+moves=16  states=52106 +4139  queue=4138  -2322  time=0m 32s  +0m 3s
+Finished solving at: 22:14:04
+Total Time Elapsed: 0m 34s
+Scanned 54,290 states with 2,340 left in the queue.
 Solution has 8 steps.
-4L2, 5L2, XU3, XR2, 6L2, 7L1, 8R2, XD3
+4L2, 5L2, XU3, XR2, 6L2, 7L1, 8R2, XD2

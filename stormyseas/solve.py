@@ -246,40 +246,48 @@ class Puzzle:
     PORT = (Position(7, 5), Position(6, 5))
     DO_MERGE_MOVES = True
 
-    def __init__(self, input_: str):
+    def __init__(self, input_: str, enable_logging: bool = False):
+        self._enable_logging = enable_logging
+
         self._initial_state = self._Input(input_).parse_state()
         self._current_state = self._initial_state
+        self._solution = None
+
+        self._queue = deque([(self._initial_state, 0)])
+        # Map of each visited state to its previous state and the move that produced it.
+        self._states: Dict[State, Tuple[State, Move, int]] = {self._initial_state: None}
+        self._move_count = 0
 
     def solve(self) -> Solution:
         """Finds the shortest set of moves to solve the puzzle using a breadth-first search of all possible states."""
-        logger = self._Logger(True)
+        logger = self._Logger(self)
 
-        queue = deque([(self._initial_state, 0)])
-        # Map of each visited state to its previous state and the move that produced it.
-        states: Dict[State, Tuple[State, Move, int]] = {self._initial_state: None}
+        while len(self._queue) > 0 and self._solution is None:
+            self._current_state, self._move_count = self._queue.popleft()
 
-        while len(queue) > 0 and not self._current_state.is_solved():
-            self._current_state, move_count = queue.popleft()
+            logger.print_status()
 
-            logger.status(move_count, len(states), len(queue))
+            self._visit_new_states()
 
-            if self._current_state.is_solved():
-                continue
+        logger.print_complete()
 
-            for piece in self._ordered_pieces(states[self._current_state]):
-                for direction in piece.directions:
-                    new_state = self._current_state.move(piece, direction)
-
-                    if new_state.is_valid() and new_state not in states:
-                        queue.append((new_state, move_count + 1))
-                        states[new_state] = (self._current_state, Move(piece, direction), move_count + 1)
-
-        logger.complete(len(states), len(queue))
-
-        if not self._current_state.is_solved():
+        if self._solution is None:
             raise Exception('Puzzle has no solution.')
 
-        return self._generate_solution(states)
+        return self._generate_solution(self._states)
+
+    def _visit_new_states(self) -> None:
+        for piece in self._ordered_pieces(self._states[self._current_state]):
+            for direction in piece.directions:
+                new_state = self._current_state.move(piece, direction)
+
+                if new_state.is_valid() and new_state not in self._states:
+                    if new_state.is_solved():
+                        self._solution = new_state
+                        return
+
+                    self._queue.append((new_state, self._move_count + 1))
+                    self._states[new_state] = (self._current_state, Move(piece, direction), self._move_count + 1)
 
     def _ordered_pieces(self, previous_tuple: Tuple[State, Move, int]) -> List[Piece]:
         """Reorders the pieces so that the piece most recently moved is at the front of the list. This optimizes the
@@ -343,33 +351,33 @@ class Puzzle:
             return State(tuple(pieces.values()))
 
     class _Logger:
-        def __init__(self, is_enabled: bool):
-            self.is_enabled = is_enabled
-            self.start_time = time()
-            self.previous_move_time = time()
-            self.previous_move_count = -1
-            self.previous_states_length = 0
-            self.previous_queue_length = 0
+        def __init__(self, puzzle: Puzzle):
+            self._puzzle = puzzle
+            self._start_time = time()
+            self._previous_move_time = time()
+            self._previous_move_count = -1
+            self._previous_states_length = 0
+            self._previous_queue_length = 0
 
-            if self.is_enabled:
-                print('Started solving at: %s' % datetime.fromtimestamp(self.start_time).strftime('%X'))
-                self.status(0, 1, 0)
+            if self._puzzle._enable_logging:
+                print('Started solving at: %s' % datetime.fromtimestamp(self._start_time).strftime('%X'))
+                self.print_status()
 
-        def status(self, move_count: int, states_length: int, queue_length: int) -> None:
-            if not self.is_enabled or self.previous_move_count == move_count:
+        def print_status(self) -> None:
+            if not self._puzzle._enable_logging or self._previous_move_count == self._puzzle._move_count:
                 return
 
-            total_seconds = time() - self.start_time
-            delta_seconds = time() - self.previous_move_time
+            total_seconds = time() - self._start_time
+            delta_seconds = time() - self._previous_move_time
 
             print(
                 'moves=%-2d  states=%-6d%+-5d  queue=%-4d  %+-5d  time=%dm %-3s  %+dm %ds' %
                 (
-                    move_count,
-                    states_length,
-                    states_length - self.previous_states_length,
-                    queue_length,
-                    queue_length - self.previous_queue_length,
+                    self._puzzle._move_count,
+                    len(self._puzzle._states),
+                    len(self._puzzle._states) - self._previous_states_length,
+                    len(self._puzzle._queue),
+                    len(self._puzzle._queue) - self._previous_queue_length,
                     total_seconds // 60,
                     str(round(total_seconds % 60)) + 's',
                     delta_seconds // 60,
@@ -377,17 +385,17 @@ class Puzzle:
                 )
             )
 
-            self.previous_move_time = time()
-            self.previous_move_count = move_count
-            self.previous_states_length = states_length
-            self.previous_queue_length = queue_length
+            self._previous_move_time = time()
+            self._previous_move_count = self._puzzle._move_count
+            self._previous_states_length = len(self._puzzle._states)
+            self._previous_queue_length = len(self._puzzle._queue)
 
-        def complete(self, states_length: int, queue_length: int) -> None:
-            if not self.is_enabled:
+        def print_complete(self) -> None:
+            if not self._puzzle._enable_logging:
                 return
 
-            seconds = time() - self.start_time
-            print('Completed! Finished at: %s' % datetime.fromtimestamp(time()).strftime('%X'))
+            seconds = time() - self._start_time
+            print('Finished solving at: %s' % datetime.fromtimestamp(time()).strftime('%X'))
             print('Total Time Elapsed: %dm %ds' % (seconds // 60, seconds % 60))
             print('Scanned %s states with %s left in the queue.' %
-                  ("{:,}".format(states_length), "{:,}".format(queue_length)))
+                  ("{:,}".format(len(self._puzzle._states)), "{:,}".format(len(self._puzzle._queue))))
