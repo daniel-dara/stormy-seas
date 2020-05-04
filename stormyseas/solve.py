@@ -266,16 +266,7 @@ class Puzzle:
             if self._current_state.is_solved():
                 continue
 
-            # TODO cleanup
-            pieces = list(self._current_state.pieces)
-            previous_tuple = states[self._current_state]
-
-            if previous_tuple is not None:
-                previous_move = previous_tuple[1]
-                index = next(i for i in range(len(pieces)) if pieces[i].id == previous_move.piece.id)
-                pieces.insert(0, pieces.pop(index))
-
-            for piece in pieces:
+            for piece in self._ordered_pieces(states[self._current_state]):
                 for direction in piece.directions:
                     new_state = self._current_state.move(piece, direction)
 
@@ -289,6 +280,18 @@ class Puzzle:
             raise Exception('Puzzle has no solution.')
 
         return self._generate_solution(states)
+
+    def _ordered_pieces(self, previous_tuple: Tuple[State, Move, int]) -> List[Piece]:
+        """Reorders the pieces so that the piece most recently moved is at the front of the list. This optimizes the
+        number of steps in the final solution by increasing the chances of being able to merge moves."""
+        pieces = list(self._current_state.pieces)
+
+        if previous_tuple is not None:
+            previous_move = previous_tuple[1]
+            index = next(i for i in range(len(pieces)) if pieces[i].id == previous_move.piece.id)
+            pieces.insert(0, pieces.pop(index))
+
+        return pieces
 
     def _generate_solution(self, states: Dict[State, Tuple[State, Move, int]]) -> Solution:
         """Generates the solution (list of moves) while iterating backwards from the final state to the initial state.
@@ -344,12 +347,13 @@ class Puzzle:
             self.is_enabled = is_enabled
             self.start_time = time()
             self.previous_move_time = time()
-            self.previous_move_count = 0
+            self.previous_move_count = -1
             self.previous_states_length = 0
             self.previous_queue_length = 0
 
             if self.is_enabled:
                 print('Started solving at: %s' % datetime.fromtimestamp(self.start_time).strftime('%X'))
+                self.status(0, 1, 0)
 
         def status(self, move_count: int, states_length: int, queue_length: int) -> None:
             if not self.is_enabled or self.previous_move_count == move_count:
