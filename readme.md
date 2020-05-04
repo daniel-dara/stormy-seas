@@ -1,13 +1,12 @@
 # stormyseas
 
 ## About the package
-`stormyseas` is a Python package for solving challenges from the puzzle game [Stormy Seas](http://www.geekyhobbies.com/stormy-seas-seafaring-puzzle-game-review-puzzled/).
-
-
+`stormyseas` is a Python package for solving challenges for the puzzle game [Stormy Seas](http://www.geekyhobbies.com/stormy-seas-seafaring-puzzle-game-review-puzzled/) (also known as Wave Breaker).
 
 ## About the game
 [Stormy Seas](http://www.geekyhobbies.com/stormy-seas-seafaring-puzzle-game-review-puzzled/) is a sliding block puzzle game released in 1997 by Binary Arts (now known as [ThinkFun](https://en.wikipedia.org/wiki/ThinkFun)). The game was created by [nob yoshigahara](https://en.wikipedia.org/wiki/Nob_Yoshigahara), author of the more famous game [Rush Hour](https://en.wikipedia.org/wiki/Rush_Hour_(puzzle)).
 
+### Gameplay
 Stormy seas is played by sliding pieces around the game board to get the red boat into port (a special space at the bottom of the board).
 
 Setup consists of selecting a challenge card and arranging wave and boat pieces as stated on the card. Then the pieces can be moved around the board by sliding them in various directions. Pieces will block each other so careful moves are required to create a path for the red boat to reach the port.
