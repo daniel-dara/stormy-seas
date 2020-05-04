@@ -6,7 +6,7 @@ from abc import abstractmethod
 from collections import deque, defaultdict
 from datetime import datetime
 from enum import Enum
-from typing import List, Dict, Tuple, Iterable, NamedTuple
+from typing import List, Dict, Tuple, Iterable, NamedTuple, Union
 
 
 class Position(NamedTuple):
@@ -255,7 +255,7 @@ class Puzzle:
 
         self._queue = deque([(self._initial_state, 0)])
         # Map of each visited state to its previous state and the move that produced it.
-        self._states: Dict[State, Tuple[State, Move, int]] = {self._initial_state: None}
+        self._states: Dict[State, Union[None, Tuple[State, Move, int]]] = {self._initial_state: None}
         self._move_count = 0
 
     def solve(self) -> Solution:
