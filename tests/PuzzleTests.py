@@ -40,7 +40,7 @@ class PuzzleTests(TestCase):
     ))
     def test_solved(self, input_: str, expected: str):
         puzzle = Puzzle(input_)
-        self.assertEqual(expected, puzzle._initial_state.is_solved())
+        self.assertEqual(expected, puzzle.initial_state.is_solved())
 
     @data_provider(lambda: (
             ("""
@@ -84,8 +84,8 @@ class PuzzleTests(TestCase):
     ))
     def test_move_right(self, input_: str, expected: str):
         puzzle = Puzzle(input_)
-        red_boat = puzzle._initial_state.find_piece('X')
-        self.assertEqual(expected.strip(), str(puzzle._initial_state.move(red_boat, Cardinal.RIGHT)))
+        red_boat = puzzle.initial_state.find_piece('X')
+        self.assertEqual(expected.strip(), str(puzzle.initial_state.move(red_boat, Cardinal.RIGHT)))
 
     @data_provider(lambda: (
         ('input/problem_2/initial.txt', 4, Cardinal.LEFT, 'input/problem_2/step_1.txt'),
@@ -111,8 +111,8 @@ class PuzzleTests(TestCase):
 
         with open(input_file) as input_, open(expected_file) as expected:
             puzzle = Puzzle(input_.read())
-            piece = puzzle._initial_state.find_piece(id_)
-            next_state = puzzle._initial_state.move(piece, direction)
+            piece = puzzle.initial_state.find_piece(id_)
+            next_state = puzzle.initial_state.move(piece, direction)
             self.assertTrue(next_state.is_valid())
             self.assertEqual(expected.read().strip(), str(next_state))
 
@@ -145,7 +145,7 @@ class PuzzleTests(TestCase):
         with open('input/problem_2/initial.txt') as input_:
             puzzle = Puzzle(input_.read())
 
-        state = puzzle._initial_state
+        state = puzzle.initial_state
 
         for id_, direction in moves:
             self.assertFalse(state.is_solved())

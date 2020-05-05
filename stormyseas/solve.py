@@ -6,7 +6,7 @@ from abc import abstractmethod
 from collections import deque, defaultdict
 from datetime import datetime
 from enum import Enum
-from typing import List, Dict, Tuple, Iterable, NamedTuple, Union
+from typing import List, Dict, Tuple, Iterable, NamedTuple, Optional
 
 
 class Delta(NamedTuple):
@@ -30,6 +30,10 @@ class Direction(Enum):
     def transform(self, positions: Tuple[Position]) -> Tuple[Position]:
         raise NotImplementedError()
 
+    @abstractmethod
+    def opposite(self) -> Direction:
+        raise NotImplementedError()
+
 
 class Cardinal(Direction):
     UP = 'U'
@@ -41,12 +45,23 @@ class Cardinal(Direction):
         self.DELTAS: Dict[Cardinal, Delta]  # Defined after class definition.
         return tuple(position + self.DELTAS[self] for position in positions)
 
+    def opposite(self) -> Direction:
+        self.OPPOSITES: Dict[Cardinal, Cardinal]  # Defined after class definition.
+        return self.OPPOSITES[self]
+
 
 Cardinal.DELTAS = {
     Cardinal.LEFT: Delta(0, -1),
     Cardinal.RIGHT: Delta(0, 1),
     Cardinal.UP: Delta(-1, 0),
     Cardinal.DOWN: Delta(1, 0),
+}
+
+Cardinal.OPPOSITES = {
+    Cardinal.LEFT: Cardinal.RIGHT,
+    Cardinal.RIGHT: Cardinal.LEFT,
+    Cardinal.UP: Cardinal.DOWN,
+    Cardinal.DOWN: Cardinal.UP,
 }
 
 
@@ -65,6 +80,9 @@ class Rotation(Direction):
         tail = positions[1] + self.DELTAS[positions[1] - positions[0]]
 
         return front, tail
+
+    def opposite(self) -> Direction:
+        raise NotImplementedError()
 
 
 Rotation.DELTAS = {
@@ -156,11 +174,11 @@ class Move:
     def __repr__(self) -> str:
         return self.__str__()
 
-    def is_mergeable(self, other: Move) -> bool:
+    def can_merge_with(self, other: Move) -> bool:
         return self.piece_id == other.piece_id and self.direction == other.direction
 
     def merge(self, other: Move) -> None:
-        if not self.is_mergeable(other):
+        if not self.can_merge_with(other):
             raise ValueError('Cannot combine moves that are different.')
 
         self.distance += other.distance
@@ -186,9 +204,30 @@ class State(NamedTuple):
     """Stores state information about the pieces on the board and manages execution of moves."""
     pieces: Tuple[Piece]
 
+    def is_valid(self) -> bool:
+        return not self.has_collision() and not self.has_piece_out_of_bounds()
+
+    def has_collision(self) -> bool:
+        positions_list = list(self.all_positions)
+        return len(positions_list) != len(set(positions_list))
+
+    def has_piece_out_of_bounds(self) -> bool:
+        all_rows, all_columns = zip(*((position.row, position.column) for position in self.all_positions))
+        return (
+            min(all_rows) < 0 or max(all_rows) >= Wave.COUNT
+            or min(all_columns) < 0 or max(all_columns) >= Wave.LENGTH
+        )
+
+    @property
+    def all_positions(self) -> Iterable[Position]:
+        return chain.from_iterable(piece.positions for piece in self.pieces)
+
     def is_solved(self) -> bool:
         """Checks if the red boat has reached the finish position (the port)."""
-        return next(piece for piece in self.pieces if piece.id == Boat.RED_BOAT_ID).positions == Puzzle.PORT
+        return self.find_piece(Boat.RED_BOAT_ID).positions == Puzzle.PORT
+
+    def find_piece(self, id_: str) -> Piece:
+        return next(piece for piece in self.pieces if piece.id == id_)
 
     def move(self, piece: Piece, direction: Direction) -> State:
         """Moves the piece in the direction and returns a new state. Handles moving multiple pieces at a time if they
@@ -200,6 +239,9 @@ class State(NamedTuple):
             return State(self._push_without_collision(piece, direction))
         else:
             return State(self._push(piece, direction))
+
+    def undo(self, piece: Piece, direction: Direction) -> State:
+        return self.move(piece, direction.opposite())
 
     def _push_without_collision(self, piece: Piece, direction: Direction) -> Tuple[Piece]:
         old_piece, new_piece = piece, piece.move(direction)
@@ -221,23 +263,6 @@ class State(NamedTuple):
 
         return tuple(pieces)
 
-    def is_valid(self) -> bool:
-        return not self._has_collision() and not self._out_of_bounds()
-
-    def _has_collision(self) -> bool:
-        positions_list = list(self._all_positions())
-        return len(positions_list) != len(set(positions_list))
-
-    def _out_of_bounds(self) -> bool:
-        all_rows, all_columns = zip(*((position.row, position.column) for position in self._all_positions()))
-        return (
-            min(all_rows) < 0 or max(all_rows) >= Wave.COUNT
-            or min(all_columns) < 0 or max(all_columns) >= Wave.LENGTH
-        )
-
-    def _all_positions(self) -> Iterable[Position]:
-        return chain.from_iterable(piece.positions for piece in self.pieces)
-
     def __str__(self) -> str:
         board = [[Wave.GAP] * Wave.LENGTH for _ in range(Wave.COUNT)]
 
@@ -252,136 +277,121 @@ class Puzzle:
     PORT = (Position(7, 5), Position(6, 5))
     DO_MERGE_MOVES = True
 
-    def __init__(self, input_: str, enable_logging: bool = False):
-        self._enable_logging = enable_logging
-
-        self._initial_state = self._Input(input_).parse()
-        self._current_state = self._initial_state
-
-        self._queue = deque([(self._initial_state, 0)])
-        # Map of each visited state to its previous state and the move that produced it.
-        self._states: Dict[State, Union[None, Tuple[State, Move, int]]] = {self._initial_state: None}
-        self._move_count = 0
+    def __init__(self, input_: str):
+        self.initial_state = PuzzleInput(input_).parse()
+        self.final_state: Optional[State] = None
+        self._bfs = BreadthFirstSearch(self.initial_state)
 
     def solve(self) -> Solution:
         """Finds the shortest set of moves to solve the puzzle using a breadth-first search of all possible states."""
-        solved_state = self._find_solved_state()
+        self.final_state = self._bfs.find_solved_state()
+        move_generator = MoveGenerator(self.initial_state, self.final_state, self._bfs.state_map)
+        return Solution(move_generator.generate())
 
-        return Solution(self._generate_moves(solved_state))
 
-    def _find_solved_state(self) -> State:
+class PuzzleInput:
+    def __init__(self, input_: str):
+        self._input = input_
+
+    def parse(self) -> State:
+        boat_positions: Dict[str, List[Position]] = defaultdict(lambda: [])
+        pieces: Dict[str, Piece] = {}
+
+        for row, line in enumerate(self._input.strip().split('\n')):
+            wave_positions = []
+
+            character: str  # PyCharm bug (PY-42194)
+            for column, character in enumerate(line.strip()):
+                if character == Wave.BLOCK:
+                    wave_positions.append(Position(row, column))
+                elif character != Wave.GAP:
+                    if character.islower():
+                        # The first position should be the front of the boat.
+                        boat_positions[character.upper()].insert(0, Position(row, column))
+                    else:
+                        boat_positions[character.upper()].append(Position(row, column))
+
+            # Constraint: Rows are 1-based in solution notation.
+            pieces[str(row + 1)] = Wave(str(row + 1), tuple(wave_positions))
+
+        for id_, positions in boat_positions.items():
+            pieces[id_] = Boat(id_, tuple(positions))
+
+        return State(tuple(pieces.values()))
+
+
+class BreadthFirstSearch:
+    def __init__(self, initial_state: State):
+        self.current_state = initial_state
+        self.queue = deque([initial_state])
+        self.state_map: Dict[State, Optional[Move]] = {initial_state: None}
+
+    def find_solved_state(self) -> State:
         logger = self._Logger(self)
+        logger.state_space()
 
-        while len(self._queue) > 0:
-            self._current_state, self._move_count = self._queue.popleft()
+        last_depth_size = len(self.queue)
 
-            logger.print_status()
+        while len(self.queue) > 0:
+            self.current_state = self.queue.popleft()
 
-            for piece in self._order_pieces(self._states[self._current_state]):
+            for piece in self.get_ordered_pieces():
                 for direction in piece.directions:
-                    new_state = self._current_state.move(piece, direction)
+                    new_state = self.current_state.move(piece, direction)
 
-                    if new_state.is_valid() and new_state not in self._states:
-                        self._queue.append((new_state, self._move_count + 1))
-                        self._states[new_state] = (self._current_state, Move(piece.id, direction), self._move_count + 1)
+                    if new_state.is_valid() and new_state not in self.state_map:
+                        self.queue.append(new_state)
+                        self.state_map[new_state] = Move(piece.id, direction)
 
                         if new_state.is_solved():
-                            logger.print_complete()
+                            logger.end()
                             return new_state
 
-        logger.print_complete()
+            last_depth_size -= 1
+
+            if last_depth_size == 0:
+                last_depth_size = len(self.queue)
+                logger.state_space()
+
+        logger.end()
         raise Exception('Puzzle has no solution.')
 
-    def _order_pieces(self, previous_tuple: Tuple[State, Move, int]) -> List[Piece]:
-        """Reorders the pieces so that the piece most recently moved is at the front of the list. This optimizes the
+    def get_ordered_pieces(self) -> List[Piece]:
+        """Orders the pieces so that the piece most recently moved is at the front of the list. This optimizes the
         number of steps in the final solution by increasing the chances of being able to merge moves."""
-        pieces = list(self._current_state.pieces)
+        pieces = list(self.current_state.pieces)
+        last_move = self.state_map[self.current_state]
 
-        if previous_tuple is not None:
-            previous_move = previous_tuple[1]
-            index = next(i for i in range(len(pieces)) if pieces[i].id == previous_move.piece_id)
-            pieces.insert(0, pieces.pop(index))
+        if last_move is not None:
+            last_moved_piece = self.current_state.find_piece(last_move.piece_id)
+            pieces.remove(last_moved_piece)
+            pieces.insert(0, last_moved_piece)
 
         return pieces
 
-    def _generate_moves(self, final_state: State) -> List[Move]:
-        """Generates a list of moves by iterating from the final state to the initial state using the state
-        map generated during solve().
-        """
-        # Every solution will need a final step of XD2 since our Puzzle.PORT position is adjusted to be in bounds.
-        moves = [Move(Boat.RED_BOAT_ID, Cardinal.DOWN, 2)]
-        current_state = final_state
-
-        while current_state != self._initial_state:
-            previous_state, previous_move, steps = self._states[current_state]
-
-            if self.DO_MERGE_MOVES and len(moves) > 0 and moves[0].is_mergeable(previous_move):
-                moves[0].merge(previous_move)
-            else:
-                moves.insert(0, previous_move)
-
-            current_state = previous_state
-
-        return moves
-
-    class _Input:
-        def __init__(self, input_: str):
-            self.input = input_
-
-        def parse(self) -> State:
-            boat_positions: Dict[str, List[Position]] = defaultdict(lambda: [])
-            pieces: Dict[str, Piece] = {}
-
-            for row, line in enumerate(self.input.strip().split('\n')):
-                wave_positions = []
-
-                character: str  # PyCharm bug (PY-42194)
-                for column, character in enumerate(line.strip()):
-                    if character == Wave.BLOCK:
-                        wave_positions.append(Position(row, column))
-                    elif character != Wave.GAP:
-                        if character.islower():
-                            # The first position should be the front of the boat.
-                            boat_positions[character.upper()].insert(0, Position(row, column))
-                        else:
-                            boat_positions[character.upper()].append(Position(row, column))
-
-                # Constraint: Rows are 1-based in solution notation.
-                pieces[str(row + 1)] = Wave(str(row + 1), tuple(wave_positions))
-
-            for id_, positions in boat_positions.items():
-                pieces[id_] = Boat(id_, tuple(positions))
-
-            return State(tuple(pieces.values()))
-
     class _Logger:
-        def __init__(self, puzzle: Puzzle):
-            self._puzzle = puzzle
+        def __init__(self, state_search: BreadthFirstSearch):
+            self._state_search = state_search
             self._start_time = time()
-            self._previous_move_time = time()
-            self._previous_move_count = -1
+            self._previous_move_time = self._start_time
             self._previous_states_length = 0
             self._previous_queue_length = 0
+            self._depth = 0
 
-            if self._puzzle._enable_logging:
-                print('Started solving at: %s' % datetime.fromtimestamp(self._start_time).strftime('%X'))
-                self.print_status()
+            print('Started solving at: %s' % datetime.fromtimestamp(self._start_time).strftime('%X'))
 
-        def print_status(self) -> None:
-            if not self._puzzle._enable_logging or self._previous_move_count == self._puzzle._move_count:
-                return
-
+        def state_space(self) -> None:
             total_seconds = time() - self._start_time
             delta_seconds = time() - self._previous_move_time
 
             print(
-                'moves=%-2d  states=%-6d%+-5d  queue=%-4d  %+-5d  time=%dm %-3s  %+dm %ds' %
+                'depth=%-2d  states=%-6d%+-5d  queue=%-4d  %+-5d  time=%dm %-3s  %+dm %ds' %
                 (
-                    self._puzzle._move_count,
-                    len(self._puzzle._states),
-                    len(self._puzzle._states) - self._previous_states_length,
-                    len(self._puzzle._queue),
-                    len(self._puzzle._queue) - self._previous_queue_length,
+                    self._depth,
+                    len(self._state_search.state_map),
+                    len(self._state_search.state_map) - self._previous_states_length,
+                    len(self._state_search.queue),
+                    len(self._state_search.queue) - self._previous_queue_length,
                     total_seconds // 60,
                     str(round(total_seconds % 60)) + 's',
                     delta_seconds // 60,
@@ -390,16 +400,42 @@ class Puzzle:
             )
 
             self._previous_move_time = time()
-            self._previous_move_count = self._puzzle._move_count
-            self._previous_states_length = len(self._puzzle._states)
-            self._previous_queue_length = len(self._puzzle._queue)
+            self._previous_states_length = len(self._state_search.state_map)
+            self._previous_queue_length = len(self._state_search.queue)
+            self._depth += 1
 
-        def print_complete(self) -> None:
-            if not self._puzzle._enable_logging:
-                return
-
+        def end(self) -> None:
             seconds = time() - self._start_time
             print('Finished solving at: %s' % datetime.fromtimestamp(time()).strftime('%X'))
             print('Total Time Elapsed: %dm %ds' % (seconds // 60, seconds % 60))
             print('Scanned %s states with %s left in the queue.' %
-                  ("{:,}".format(len(self._puzzle._states)), "{:,}".format(len(self._puzzle._queue))))
+                  ("{:,}".format(len(self._state_search.state_map)), "{:,}".format(len(self._state_search.queue))))
+
+
+class MoveGenerator:
+    def __init__(self, initial_state: State, final_state: State, state_map: Dict[State, Move]):
+        self.initial_state = initial_state
+        self.final_state = final_state
+        self.state_map = state_map
+
+    def generate(self) -> List[Move]:
+        """Generates a list of moves by traversing from the final state to the initial state using the state
+        map generated by StateSearch.
+        """
+        # Every solution will need a final step of XD2 since our Puzzle.PORT position is adjusted to be in bounds.
+        moves = [Move(Boat.RED_BOAT_ID, Cardinal.DOWN, 2)]
+
+        current_state = self.final_state
+
+        while current_state != self.initial_state:
+            previous_move = self.state_map[current_state]
+
+            if len(moves) > 0 and moves[0].can_merge_with(previous_move):
+                moves[0].merge(previous_move)
+            else:
+                moves.insert(0, previous_move)
+
+            piece = current_state.find_piece(previous_move.piece_id)
+            current_state = current_state.undo(piece, previous_move.direction)
+
+        return moves
