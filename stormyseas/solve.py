@@ -120,6 +120,7 @@ class Boat(Piece):
     @property
     def directions(self) -> Tuple[Direction, ...]:
         # Optimization: The game board is sized such that only 2 length boats will ever have room to rotate.
+        # PyCharm bug (PY-26133)
         # noinspection PyTypeChecker
         return tuple(Cardinal)  # + (tuple(Rotation) if len(self.positions) == 2 else ())
 
@@ -148,6 +149,7 @@ class Move:
         self.distance = distance
 
     def __str__(self) -> str:
+        # PyCharm bug (PY-16622)
         # noinspection PyTypeChecker
         return self.piece_id + self.direction.value + str(self.distance)
 
@@ -331,7 +333,7 @@ class Puzzle:
             for row, line in enumerate(self.input.strip().split('\n')):
                 wave_positions = []
 
-                character: str  # Work around: Pycharm type inference bug (PY-42194)
+                character: str  # PyCharm bug (PY-42194)
                 for column, character in enumerate(line.strip()):
                     if character == Wave.BLOCK:
                         wave_positions.append(Position(row, column))
