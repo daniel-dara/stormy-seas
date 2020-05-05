@@ -265,19 +265,19 @@ class Puzzle:
 
     def solve(self) -> Solution:
         """Finds the shortest set of moves to solve the puzzle using a breadth-first search of all possible states."""
+        solved_state = self._find_solved_state()
+
+        return Solution(self._generate_moves(solved_state))
+
+    def _find_solved_state(self) -> State:
         logger = self._Logger(self)
-        solved_state = self._find_solved_state(logger)
-        logger.print_complete()
 
-        return self._generate_solution(solved_state)
-
-    def _find_solved_state(self, logger: _Logger) -> State:
         while len(self._queue) > 0:
             self._current_state, self._move_count = self._queue.popleft()
 
             logger.print_status()
 
-            for piece in self._ordered_pieces(self._states[self._current_state]):
+            for piece in self._order_pieces(self._states[self._current_state]):
                 for direction in piece.directions:
                     new_state = self._current_state.move(piece, direction)
 
@@ -286,11 +286,13 @@ class Puzzle:
                         self._states[new_state] = (self._current_state, Move(piece.id, direction), self._move_count + 1)
 
                         if new_state.is_solved():
+                            logger.print_complete()
                             return new_state
 
+        logger.print_complete()
         raise Exception('Puzzle has no solution.')
 
-    def _ordered_pieces(self, previous_tuple: Tuple[State, Move, int]) -> List[Piece]:
+    def _order_pieces(self, previous_tuple: Tuple[State, Move, int]) -> List[Piece]:
         """Reorders the pieces so that the piece most recently moved is at the front of the list. This optimizes the
         number of steps in the final solution by increasing the chances of being able to merge moves."""
         pieces = list(self._current_state.pieces)
@@ -302,8 +304,8 @@ class Puzzle:
 
         return pieces
 
-    def _generate_solution(self, final_state: State) -> Solution:
-        """Generates a Solution (list of moves) by iterating from the final state to the initial state using the state
+    def _generate_moves(self, final_state: State) -> List[Move]:
+        """Generates a list of moves by iterating from the final state to the initial state using the state
         map generated during solve().
         """
         # Every solution will need a final step of XD2 since our Puzzle.PORT position is adjusted to be in bounds.
@@ -320,7 +322,7 @@ class Puzzle:
 
             current_state = previous_state
 
-        return Solution(moves)
+        return moves
 
     class _Input:
         def __init__(self, input_: str):
