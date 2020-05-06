@@ -142,7 +142,7 @@ class PuzzleTests(TestCase):
             ('X', Cardinal.DOWN),
         ]
 
-        with open('input/problem_2/initial.txt') as input_:
+        with open('../input/problem_2/initial.txt') as input_:
             puzzle = Puzzle(input_.read())
 
         state = puzzle.initial_state
@@ -158,7 +158,7 @@ class PuzzleTests(TestCase):
         self.assertTrue(state.is_solved())
 
     def test_solve_from_step_12(self):
-        with open('input/problem_2/step_13.txt') as input_:
+        with open('../input/problem_2/step_13.txt') as input_:
             puzzle = Puzzle(input_.read())
             solution = puzzle.solve()
             self.assertEqual(4, solution.move_count())
