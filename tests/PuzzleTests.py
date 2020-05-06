@@ -2,7 +2,7 @@ from unittest import TestCase
 
 from unittest_data_provider import data_provider
 
-from stormyseas.puzzle import *
+from stormyseas import *
 
 
 class PuzzleTests(TestCase):
@@ -161,4 +161,4 @@ class PuzzleTests(TestCase):
         with open('input/problem_2/step_13.txt') as input_:
             puzzle = Puzzle(input_.read())
             solution = puzzle.solve()
-            self.assertEqual(4, solution.length())
+            self.assertEqual(4, solution.move_count())
