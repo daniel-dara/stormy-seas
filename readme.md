@@ -18,9 +18,9 @@ View the files in the [examples](examples) directory to see examples of how to s
 
 ## Puzzle Cards
 Below are a few cards from the actual game to help visualize puzzle input.
-* [Problem 1](https://user-images.githubusercontent.com/1920621/80294652-ca4a3280-8738-11ea-9fda-6aa1ea3460f6.jpg) - 15 steps, 30 moves
-* [Problem 2](https://user-images.githubusercontent.com/1920621/80294654-cc13f600-8738-11ea-9160-b67fae22b393.jpg) - 8 steps, 19 moves
-* [Problem 3](https://user-images.githubusercontent.com/1920621/80294655-ccac8c80-8738-11ea-80eb-d5895066de72.jpg) - 30 steps, 53 moves
+* [Card 2](https://user-images.githubusercontent.com/1920621/80294654-cc13f600-8738-11ea-9160-b67fae22b393.jpg) - 8 steps, 19 moves
+* [Card 10](https://user-images.githubusercontent.com/1920621/80294652-ca4a3280-8738-11ea-9fda-6aa1ea3460f6.jpg) - 15 steps, 30 moves
+* [Card 31](https://user-images.githubusercontent.com/1920621/80294655-ccac8c80-8738-11ea-80eb-d5895066de72.jpg) - 30 steps, 53 moves
 
 ## Puzzle Input
 The `Puzzle` class can be initialized with an input string of the puzzle state. Here is one example.
