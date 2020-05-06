@@ -3,12 +3,12 @@ from cProfile import Profile
 from stormyseas import Puzzle
 
 from tests.performance import profile_export
-from tests.utilities import read_test_file
+from tests.utilities import InputFile
 
 profile = Profile()
 profile.enable()
 
-solution = Puzzle(read_test_file('problem_2.txt')).solve()
+solution = Puzzle(InputFile.CARD_3.read()).solve()
 print('Solution has %d steps and %d moves.' % (solution.step_count(), solution.move_count()))
 print(solution)
 

@@ -1,8 +1,10 @@
+from enum import Enum
 from importlib import resources
+from types import ModuleType
 from unittest import TestCase
 
 from stormyseas import Solution
-from tests import input
+from tests.input import cards
 
 
 class StormySeasTest(TestCase):
@@ -13,7 +15,12 @@ class StormySeasTest(TestCase):
         self.assertEqual(solution_string, str(solution))
 
 
-def read_test_file(filename: str) -> str:
-    # PyCharm bug (PY-42260)
-    # noinspection PyTypeChecker
-    return resources.read_text(input, filename)
+class InputFile(Enum):
+    CARD_3 = cards, 'card_3'
+
+    def read(self) -> str:
+        return read_file(*self.value)
+
+
+def read_file(module: ModuleType, name: str) -> str:
+    return resources.read_text(module, name + '.txt')
