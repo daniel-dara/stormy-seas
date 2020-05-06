@@ -1,6 +1,6 @@
 from stormyseas import Puzzle
 
-puzzle_string = open('puzzle.txt').read()
+puzzle_string = open('puzzle_card.txt').read()
 solution = Puzzle(puzzle_string).solve()
 
 print('Solution has %d steps and %d moves.' % (solution.step_count(), solution.move_count()))
