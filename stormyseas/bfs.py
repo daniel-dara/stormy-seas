@@ -58,6 +58,7 @@ class BreadthFirstSearch:
 
         return pieces
 
+    # TODO Add global switch, potentially split off this class
     class _Logger:
         def __init__(self, state_search: BreadthFirstSearch):
             self._state_search = state_search
