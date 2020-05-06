@@ -10,9 +10,6 @@ class Solution:
     def __init__(self, moves: List[Move]):
         self._moves = moves
 
-    def __str__(self) -> str:
-        return ', '.join(str(move) for move in self._moves)
-
     def step_count(self) -> int:
         """A step is a move of any distance."""
         return len(self._moves)
@@ -20,6 +17,9 @@ class Solution:
     def move_count(self) -> int:
         """A move is the act of moving a piece in a direction by one space."""
         return sum(move.distance for move in self._moves)
+
+    def __str__(self) -> str:
+        return ', '.join(str(move) for move in self._moves)
 
 
 class MoveGenerator:
