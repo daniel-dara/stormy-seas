@@ -1,19 +1,14 @@
 from cProfile import Profile
-from importlib import resources
 
 from stormyseas import Puzzle
 
 from tests.performance import profile_export
-from tests import input
-
-# PyCharm bug (PY-42260)
-# noinspection PyTypeChecker
-puzzle_string = resources.read_text(input, 'problem_2.txt')
+from tests.utilities import read_test_file
 
 profile = Profile()
 profile.enable()
 
-solution = Puzzle(puzzle_string).solve()
+solution = Puzzle(read_test_file('problem_2.txt')).solve()
 print('Solution has %d steps and %d moves.' % (solution.step_count(), solution.move_count()))
 print(solution)
 
