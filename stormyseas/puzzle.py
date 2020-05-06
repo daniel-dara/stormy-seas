@@ -7,7 +7,7 @@ from stormyseas.state import State
 
 
 class Puzzle:
-    """A class for finding solutions to puzzles."""
+    """A class for finding solutions to input."""
     DO_MERGE_MOVES = True
 
     def __init__(self, puzzle_string: str):

@@ -22,7 +22,7 @@ class Piece(NamedTuple):
 
     def move(self, direction: Direction) -> Piece:
         if isinstance(direction, Rotation):
-            # test later
+            # my_tests later
             raise ValueError('Rotation not supported yet')
 
         if direction not in self.directions:
