@@ -8,18 +8,18 @@ from stormyseas.state import State
 
 class Solution:
     def __init__(self, moves: List[Move]):
-        self._moves = moves
+        self.moves = moves
 
     def step_count(self) -> int:
         """A step is a move of any distance."""
-        return len(self._moves)
+        return len(self.moves)
 
     def move_count(self) -> int:
         """A move is the act of moving a piece in a direction by one space."""
-        return sum(move.distance for move in self._moves)
+        return sum(move.distance for move in self.moves)
 
     def __str__(self) -> str:
-        return ', '.join(str(move) for move in self._moves)
+        return ', '.join(str(move) for move in self.moves)
 
 
 class MoveGenerator:
