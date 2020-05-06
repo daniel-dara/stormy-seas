@@ -1,7 +1,7 @@
 # stormyseas
 
 ## About the package
-`stormyseas` is a Python package for solving challenges for the puzzle game [Stormy Seas](http://www.geekyhobbies.com/stormy-seas-seafaring-puzzle-game-review-puzzled/) (also known as [Wave Breaker](https://www.amazon.com/dp/B01MQKC6X7)).
+`stormyseas` is a Python package for solving challenges for the puzzle game [Stormy Seas](http://www.geekyhobbies.com/stormy-seas-seafaring-puzzle-game-review-puzzled/) (also known as [Wave Breaker](https://www.amazon.com/dp/B01MQKC6X7)). It currently requires Python 3.7 or later.
 
 ## About the game
 _Stormy Seas_ is a puzzle game released in 1997 by Binary Arts. Binary Arts was later renamed to [ThinkFun](https://www.thinkfun.com/press/binary-arts-changes-name-thinkfun/) and the game was re-released as _Wave Breaker_. The game follows similar mechanics to its more famous precursor, [Rush Hour](https://en.wikipedia.org/wiki/Rush_Hour_(puzzle)).
