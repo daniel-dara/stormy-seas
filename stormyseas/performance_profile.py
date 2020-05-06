@@ -1,7 +1,7 @@
 import cProfile
 
 from stormyseas import profile_export
-from stormyseas.solve import *
+from stormyseas.puzzle import *
 
 is_profile_enabled = True
 

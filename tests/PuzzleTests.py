@@ -2,7 +2,7 @@ from unittest import TestCase
 
 from unittest_data_provider import data_provider
 
-from stormyseas.solve import *
+from stormyseas.puzzle import *
 
 
 class PuzzleTests(TestCase):
