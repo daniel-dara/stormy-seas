@@ -18,6 +18,7 @@ class StormySeasTest(TestCase):
 class Asset(Enum):
     CARD_3 = auto()
     CARD_10 = auto()
+    CARD_26 = auto()
     CARD_31 = auto()
 
     @property
