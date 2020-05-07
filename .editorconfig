@@ -1,0 +1,4 @@
+root = true
+
+[*.py]
+insert_final_newline = true
