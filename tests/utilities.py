@@ -1,10 +1,10 @@
-from enum import Enum
+from enum import Enum, auto
 from importlib import resources
 from types import ModuleType
 from unittest import TestCase
 
 from stormyseas import Solution
-from tests.input import cards
+from tests.assets import cards
 
 
 class StormySeasTest(TestCase):
@@ -15,12 +15,22 @@ class StormySeasTest(TestCase):
         self.assertEqual(solution_string, str(solution))
 
 
-class InputFile(Enum):
-    CARD_3 = cards, 'card_3'
+class Asset(Enum):
+    CARD_3 = auto()
+    CARD_10 = auto()
+    CARD_31 = auto()
 
-    def read(self) -> str:
-        return read_file(*self.value)
+    @property
+    def input(self) -> str:
+        return self._read('.in')
+
+    @property
+    def output(self) -> str:
+        return self._read('.out')
+
+    def _read(self, suffix: str) -> str:
+        return read_file(cards, self.name.lower() + suffix)
 
 
-def read_file(module: ModuleType, name: str) -> str:
-    return resources.read_text(module, name + '.txt')
+def read_file(module: ModuleType, file_name: str) -> str:
+    return resources.read_text(module, file_name)
